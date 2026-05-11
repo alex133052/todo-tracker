@@ -3,68 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo Tracker</title>
+    <title>Todo Tracker Pro</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; background: #f5f5f5; }
-        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        input, button { width: 100%; padding: 0.5rem; margin: 0.5rem 0; box-sizing: border-box; }
-        button { background: #007bff; color: white; border: none; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        ul { list-style: none; padding: 0; }
-        li { padding: 0.5rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .completed { text-decoration: line-through; color: #888; }
-        .actions button { width: auto; margin-left: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 2rem 1rem; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 2rem; font-size: 2.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        
+        /* Statistics */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #667eea; }
+        .stat-label { color: #666; margin-top: 0.5rem; font-size: 0.9rem; }
+        
+        /* Form */
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+        input, select { width: 100%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s; }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        button { width: 100%; padding: 0.75rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600; margin-top: 1rem; transition: transform 0.1s; }
+        button:hover { transform: translateY(-2px); background: #5568d3; }
+        button:active { transform: translateY(0); }
+        
+        /* Filters */
+        .filters { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .filters input, .filters select { flex: 1; min-width: 200px; }
+        
+        /* Task list */
+        .task-list { list-style: none; }
+        .task-item { background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; transition: all 0.3s; }
+        .task-item:hover { transform: translateX(4px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .task-item.completed { opacity: 0.6; background: #e8f5e9; }
+        .task-item.overdue { border-left: 4px solid #f44336; }
+        .task-content { flex: 1; }
+        .task-title { font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .task-item.completed .task-title { text-decoration: line-through; color: #888; }
+        .task-meta { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.85rem; color: #666; }
+        .task-meta span { display: flex; align-items: center; gap: 0.3rem; }
+        .category-badge { background: #667eea; color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; }
+        .due-date { color: #f44336; font-weight: 600; }
+        .due-date.past { background: #ffebee; padding: 0.2rem 0.5rem; border-radius: 4px; }
+        .task-actions { display: flex; gap: 0.5rem; }
+        .task-actions button { width: auto; margin: 0; padding: 0.5rem 0.75rem; font-size: 0.9rem; }
+        .btn-complete { background: #4caf50; }
+        .btn-delete { background: #f44336; }
+        .empty-state { text-align: center; padding: 3rem; color: #999; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2> Мои задачи</h2>
-        <input type="text" id="title" placeholder="Название задачи">
-        <input type="text" id="desc" placeholder="Описание (необязательно)">
-        <button onclick="addTodo()">Добавить</button>
-        <ul id="list"></ul>
+    <div class="container">
+        <h1>📋 Todo Tracker Pro</h1>
+        
+        <!-- Statistics -->
+        <div class="stats" id="stats"></div>
+        
+        <!-- Add Task Form -->
+        <div class="card">
+            <h2 style="margin-bottom: 1rem;">➕ Новая задача</h2>
+            <div class="form-grid">
+                <input type="text" id="title" placeholder="Название задачи *" required>
+                <input type="text" id="category" placeholder="Категория (например: Работа)" value="Общее">
+                <input type="text" id="desc" placeholder="Описание" style="grid-column: 1 / -1;">
+                <input type="date" id="dueDate" placeholder="Дедлайн">
+            </div>
+            <button onclick="addTodo()">Добавить задачу</button>
+        </div>
+        
+        <!-- Filters -->
+        <div class="card">
+            <div class="filters">
+                <input type="text" id="searchInput" placeholder="🔍 Поиск задач..." oninput="loadTodos()">
+                <select id="categoryFilter" onchange="loadTodos()">
+                    <option value="">Все категории</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Task List -->
+        <div class="card">
+            <h2 style="margin-bottom: 1rem;">📝 Мои задачи</h2>
+            <ul class="task-list" id="taskList"></ul>
+        </div>
     </div>
 
     <script>
-        async function loadTodos() {
-            const res = await fetch('/todos');
-            const todos = await res.json();
-            const list = document.getElementById('list');
-            list.innerHTML = todos.map(t => `
-                <li class="${t.completed ? 'completed' : ''}">
-                    <span>${t.title}</span>
-                    <div class="actions">
-                        <button onclick="toggle(${t.id})">✅</button>
-                        <button onclick="del(${t.id})" style="background:#dc3545">🗑️</button>
+        // Load statistics
+        async function loadStats() {
+            try {
+                const res = await fetch('/statistics');
+                const stats = await res.json();
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.total}</div>
+                        <div class="stat-label">Всего задач</div>
                     </div>
-                </li>
-            `).join('');
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #4caf50">${stats.completed}</div>
+                        <div class="stat-label">Выполнено</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #ff9800">${stats.pending}</div>
+                        <div class="stat-label">В процессе</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #f44336">${stats.overdue}</div>
+                        <div class="stat-label">Просрочено</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #9c27b0">${stats.completion_rate}%</div>
+                        <div class="stat-label">Успешность</div>
+                    </div>
+                `;
+            } catch (e) { console.error('Stats error:', e); }
+        }
+
+        // Load categories
+        async function loadCategories() {
+            try {
+                const res = await fetch('/categories');
+                const categories = await res.json();
+                const select = document.getElementById('categoryFilter');
+                select.innerHTML = '<option value="">Все категории</option>' + 
+                    categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            } catch (e) { console.error('Categories error:', e); }
+        }
+
+        // Load todos
+        async function loadTodos() {
+            const search = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
+            
+            let url = '/todos?';
+            if (search) url += `search=${encodeURIComponent(search)}&`;
+            if (category) url += `category=${encodeURIComponent(category)}`;
+            
+            const res = await fetch(url);
+            const todos = await res.json();
+            const list = document.getElementById('taskList');
+            
+            if (todos.length === 0) {
+                list.innerHTML = '<div class="empty-state">📭 Нет задач. Добавь первую!</div>';
+                return;
+            }
+            
+            const today = new Date().toISOString().split('T')[0];
+            list.innerHTML = todos.map(t => {
+                const isOverdue = !t.completed && t.due_date && t.due_date < today;
+                const dueDateClass = isOverdue ? 'due-date past' : 'due-date';
+                return `
+                    <li class="task-item ${t.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}">
+                        <div class="task-content">
+                            <div class="task-title">${t.title}</div>
+                            <div class="task-meta">
+                                <span class="category-badge">${t.category}</span>
+                                ${t.due_date ? `<span class="${dueDateClass}">📅 ${formatDate(t.due_date)} ${isOverdue ? '(просрочено)' : ''}</span>` : ''}
+                                ${t.description ? `<span>📝 ${t.description}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn-complete" onclick="toggleTodo(${t.id})">${t.completed ? '↩️' : '✅'}</button>
+                            <button class="btn-delete" onclick="deleteTodo(${t.id})">🗑️</button>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ru-RU');
         }
 
         async function addTodo() {
-            const title = document.getElementById('title').value;
-            if(!title) return alert('Введите название!');
+            const title = document.getElementById('title').value.trim();
+            if (!title) return alert('Введите название задачи!');
+            
+            const data = {
+                title,
+                description: document.getElementById('desc').value,
+                category: document.getElementById('category').value || 'Общее',
+                due_date: document.getElementById('dueDate').value || null
+            };
+            
             await fetch('/todos', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({title, description: document.getElementById('desc').value})
+                body: JSON.stringify(data)
             });
+            
+            // Clear form
             document.getElementById('title').value = '';
             document.getElementById('desc').value = '';
-            loadTodos();
+            document.getElementById('dueDate').value = '';
+            
+            await refreshAll();
         }
 
-        async function toggle(id) {
-            await fetch(`/todos/${id}`, {method: 'PUT'});
-            loadTodos();
+        async function toggleTodo(id) {
+            await fetch(`/todos/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({completed: true})
+            });
+            await refreshAll();
         }
 
-        async function del(id) {
+        async function deleteTodo(id) {
+            if (!confirm('Удалить задачу?')) return;
             await fetch(`/todos/${id}`, {method: 'DELETE'});
-            loadTodos();
+            await refreshAll();
         }
 
-        loadTodos();
+        async function refreshAll() {
+            await loadStats();
+            await loadCategories();
+            await loadTodos();
+        }
+
+        // Initial load
+        refreshAll();
     </script>
 </body>
 </html>
