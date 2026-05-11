@@ -23,7 +23,7 @@ def get_db_connection():
     user = os.getenv("DATABASE_USER", "postgres")
     dsn = f"dbname={db_name} user={user} password={password} host={host} port=5432"
     conn = psycopg2.connect(dsn)
-    conn.cursor_factory = RealDictCursor  # <-- ВАЖНО! Чтобы возвращались словари
+    conn.cursor_factory = RealDictCursor  # Возвращаем словари вместо кортежей
     return conn
 
 def verify_password(plain_password, hashed_password):
@@ -32,7 +32,7 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-def create_access_token( dict, expires_delta: Optional[timedelta] = None):
+def create_access_token( dict: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
