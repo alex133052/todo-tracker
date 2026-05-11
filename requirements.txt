@@ -2,3 +2,9 @@ fastapi
 uvicorn[standard]
 psycopg2-binary
 pydantic
+fastapi
+uvicorn[standard]
+psycopg2-binary
+pydantic
+python-jose[cryptography]  # <-- для JWT
+passlib[bcrypt]            # <-- для хеширования паролей

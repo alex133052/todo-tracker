@@ -1,20 +1,15 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from src.database import TodoDatabase
-from src.models import TodoCreate, TodoUpdate, TodoResponse, StatisticsResponse
-from typing import Optional
+from src.models import UserCreate, Token
+from src.auth import create_access_token, get_current_user
+from datetime import timedelta
+from src.auth import ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_user
 
-app = FastAPI(title="Todo Tracker API")
+app = FastAPI(title="Todo Tracker Pro")
 
-# Добавляем CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 db = TodoDatabase()
 
@@ -26,40 +21,36 @@ def startup():
 def root():
     return FileResponse("src/index.html")
 
-@app.post("/todos", response_model=TodoResponse)
-def create_todo(todo: TodoCreate):
-    return db.create_todo(todo.title, todo.description, todo.category, todo.due_date)
+# --- AUTH ---
+@app.post("/auth/register", response_model=dict)
+def register(user: UserCreate):
+    try:
+        new_user = db.create_user(user.email, user.password)
+        return {"message": "Пользователь создан", "user_id": new_user['id']}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/todos", response_model=list[TodoResponse])
-def get_todos(
-    category: Optional[str] = Query(None),
-    search: Optional[str] = Query(None)
-):
-    if search:
-        return db.search_todos(search)
-    elif category:
-        return db.get_todos_by_category(category)
-    else:
-        return db.get_all_todos()
+@app.post("/token", response_model=Token)
+def login(user: UserCreate):
+    db_user = authenticate_user(user.email, user.password)
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Неверный email или пароль")
+    
+    access_token = create_access_token(
+        data={"sub": db_user['email']},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/categories", response_model=list[str])
-def get_categories():
-    return db.get_categories()
+# --- TODOS (теперь с авторизацией) ---
+@app.post("/todos")
+def create_todo(todo: dict, current_user: dict = Depends(get_current_user)):
+    # TODO: добавить user_id в вызов db.create_todo
+    return db.create_todo(todo['title'], todo.get('description', ''), todo.get('category', 'Общее'), todo.get('due_date'))
 
-@app.put("/todos/{todo_id}", response_model=TodoResponse)
-def update_todo(todo_id: int, todo: TodoUpdate):
-    result = db.update_todo(todo_id, **todo.dict(exclude_unset=True))
-    if not result:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return result
+@app.get("/todos")
+def get_todos(current_user: dict = Depends(get_current_user)):
+    # TODO: добавить фильтрацию по current_user['email'] или user_id
+    return db.get_all_todos()
 
-@app.delete("/todos/{todo_id}")
-def delete_todo(todo_id: int):
-    success = db.delete_todo(todo_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return {"message": "Task deleted"}
-
-@app.get("/statistics", response_model=StatisticsResponse)
-def get_statistics():
-    return db.get_statistics()
+# ... остальные эндпоинты ...
