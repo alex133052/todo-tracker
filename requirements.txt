@@ -5,6 +5,7 @@ pydantic[email]
 python-jose[cryptography]
 passlib[bcrypt]
 bcrypt==3.2.2
-validate-email  # Проверка MX записей домена
-apscheduler     # Планировщик задач (для уведомлений)
-aiofiles        # Для статики (если понадобится)
+validate-email
+pyDNS
+apscheduler
+aiofiles

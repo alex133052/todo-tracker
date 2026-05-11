@@ -34,13 +34,17 @@ def root():
 @app.post("/auth/register", response_model=dict)
 def register(user: UserCreate):
     try:
-        # Упрощённая проверка email (без verify=True, чтобы избежать таймаутов)
-        is_valid = validate_email(user.email, check_mx=True)
+        # Упрощённая проверка email с обработкой отсутствия pyDNS
+        try:
+            # Пробуем полную проверку (требует pyDNS)
+            is_valid = validate_email(user.email, check_mx=True)
+        except Exception as e:
+            # Если pyDNS не установлен, проверяем только формат
+            print(f"⚠️ pyDNS not installed, using basic validation: {e}")
+            is_valid = "@" in user.email and "." in user.email.split("@")[-1]
         
         if not is_valid:
-            # Для тестов можно раскомментировать pass вместо raise
-            # pass
-            raise HTTPException(status_code=400, detail="Некорректный email или домен")
+            raise HTTPException(status_code=400, detail="Некорректный email")
 
         new_user = db.create_user(user.email, user.password)
         
@@ -82,7 +86,13 @@ def login(user: UserCreate):
 @app.post("/todos")
 def create_todo(todo: dict, current_user: dict = Depends(get_current_user)):
     user_id = current_user['id']
-    return db.create_todo(todo['title'], todo.get('description', ''), todo.get('category', 'Общее'), todo.get('due_date'), user_id)
+    return db.create_todo(
+        todo['title'], 
+        todo.get('description', ''), 
+        todo.get('category', 'Общее'), 
+        todo.get('due_date'), 
+        user_id
+    )
 
 @app.get("/todos")
 def get_todos(current_user: dict = Depends(get_current_user)):
