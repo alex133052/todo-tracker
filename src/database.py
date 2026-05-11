@@ -24,7 +24,7 @@ class TodoDatabase:
     def init_db(self):
         conn = self._get_connection()
         with conn.cursor() as cur:
-            # 1. Обновляем таблицу пользователей
+            # Создаём таблицу пользователей
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
@@ -35,15 +35,25 @@ class TodoDatabase:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            
             # Добавляем колонки, если их нет
-            cur.execute("""SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='is_verified'""")
+            cur.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='users' AND column_name='is_verified'
+            """)
             if not cur.fetchone():
                 cur.execute("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE")
-            cur.execute("""SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='verification_token'""")
+            
+            cur.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='users' AND column_name='verification_token'
+            """)
             if not cur.fetchone():
                 cur.execute("ALTER TABLE users ADD COLUMN verification_token TEXT")
             
-            # 2. Таблица задач
+            # Создаём таблицу задач
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS todos (
                     id SERIAL PRIMARY KEY,
@@ -56,17 +66,21 @@ class TodoDatabase:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-             # Добавляем колонку user_id в todos, если нет
-            cur.execute("""SELECT column_name FROM information_schema.columns WHERE table_name='todos' AND column_name='user_id'""")
+            
+            # Добавляем user_id, если нет
+            cur.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='todos' AND column_name='user_id'
+            """)
             if not cur.fetchone():
                 cur.execute("ALTER TABLE todos ADD COLUMN user_id INT")
-
+            
             conn.commit()
 
     def create_user(self, email: str, password: str) -> dict:
         conn = self._get_connection()
         hashed_pw = pwd_context.hash(password)
-        # Генерируем токен для верификации
         import secrets
         token = secrets.token_urlsafe(32)
         
@@ -85,31 +99,23 @@ class TodoDatabase:
     def verify_user(self, token: str) -> bool:
         conn = self._get_connection()
         with conn.cursor() as cur:
-            cur.execute("UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = %s", (token,))
+            cur.execute(
+                "UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = %s",
+                (token,)
+            )
             conn.commit()
             return cur.rowcount > 0
 
     def get_user_by_email(self, email: str):
         conn = self._get_connection()
         with conn.cursor() as cur:
-            cur.execute("SELECT id, email, hashed_password, is_verified FROM users WHERE email = %s", (email,))
+            cur.execute(
+                "SELECT id, email, hashed_password, is_verified FROM users WHERE email = %s",
+                (email,)
+            )
             user = cur.fetchone()
             return dict(user) if user else None
 
-    # ... остальные методы (create_todo, get_all_todos и т.д.) оставляем без изменений ...
-    # (они уже есть в твоем файле)
-    
-    def get_overdue_tasks_for_user(self, user_id: int, user_email: str):
-        """Получить просроченные задачи для email-рассылки"""
-        conn = self._get_connection()
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT title, due_date FROM todos
-                WHERE user_id = %s AND completed = FALSE AND due_date < CURRENT_DATE
-            """, (user_id,))
-            return cur.fetchall()
-            
-    # (Не забудь добавить остальные методы из предыдущего шага, если они удалились!)
     def create_todo(self, title: str, description: str, category: str, due_date, user_id: int) -> dict:
         conn = self._get_connection()
         with conn.cursor() as cur:
@@ -136,4 +142,72 @@ class TodoDatabase:
             """, (user_id,))
             return [dict(row) for row in cur.fetchall()]
 
-    # ... и так далее для update_todo, delete_todo, get_statistics ...
+    def update_todo(self, todo_id: int, user_id: int, **kwargs) -> dict:
+        conn = self._get_connection()
+        updates = []
+        values = []
+        
+        for key, value in kwargs.items():
+            if key in ['title', 'description', 'category', 'due_date', 'completed']:
+                updates.append(f"{key} = %s")
+                values.append(value)
+        
+        if not updates:
+            return None
+        
+        values.append(todo_id)
+        values.append(user_id)
+        
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""UPDATE todos SET {', '.join(updates)} 
+                    WHERE id = %s AND user_id = %s 
+                    RETURNING id, title, description, category, due_date, completed, created_at""",
+                values
+            )
+            conn.commit()
+            result = cur.fetchone()
+            return dict(result) if result else None
+
+    def delete_todo(self, todo_id: int, user_id: int) -> bool:
+        conn = self._get_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM todos WHERE id = %s AND user_id = %s",
+                (todo_id, user_id)
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+    def get_statistics(self, user_id: int) -> dict:
+        """Получить статистику задач пользователя"""
+        conn = self._get_connection()
+        with conn.cursor() as cur:
+            # Всего задач
+            cur.execute("SELECT COUNT(*) FROM todos WHERE user_id = %s", (user_id,))
+            total = cur.fetchone()['count']
+            
+            # Выполнено
+            cur.execute("SELECT COUNT(*) FROM todos WHERE user_id = %s AND completed = TRUE", (user_id,))
+            completed = cur.fetchone()['count']
+            
+            # В процессе (не выполнено)
+            pending = total - completed
+            
+            # Просрочено
+            cur.execute("""
+                SELECT COUNT(*) FROM todos 
+                WHERE user_id = %s AND completed = FALSE AND due_date < CURRENT_DATE
+            """, (user_id,))
+            overdue = cur.fetchone()['count']
+            
+            # Процент выполнения
+            completion_rate = round((completed / total * 100) if total > 0 else 0)
+            
+            return {
+                "total": total,
+                "completed": completed,
+                "pending": pending,
+                "overdue": overdue,
+                "completion_rate": completion_rate
+            }
