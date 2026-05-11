@@ -22,17 +22,34 @@ class TodoDatabase:
     def init_db(self):
         conn = self._get_connection()
         with conn.cursor() as cur:
+            # 1. Создаём таблицу, если её нет
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS todos (
                     id SERIAL PRIMARY KEY,
                     title TEXT NOT NULL,
                     description TEXT,
-                    category TEXT DEFAULT 'Общее',
-                    due_date DATE,
                     completed BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            
+            # 2. ДОБАВЛЯЕМ новые колонки, если их нет (важно для обновления!)
+            # Проверяем и добавляем column 'category'
+            cur.execute("""
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name='todos' AND column_name='category'
+            """)
+            if not cur.fetchone():
+                cur.execute("ALTER TABLE todos ADD COLUMN category TEXT DEFAULT 'Общее'")
+                
+            # Проверяем и добавляем column 'due_date'
+            cur.execute("""
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name='todos' AND column_name='due_date'
+            """)
+            if not cur.fetchone():
+                cur.execute("ALTER TABLE todos ADD COLUMN due_date DATE")
+                
             conn.commit()
 
     def create_todo(self, title: str, description: str, category: str = "Общее", due_date: str = None) -> dict:
@@ -137,26 +154,21 @@ class TodoDatabase:
     def get_statistics(self) -> dict:
         conn = self._get_connection()
         with conn.cursor() as cur:
-            # Всего задач
             cur.execute("SELECT COUNT(*) FROM todos")
             total = cur.fetchone()['count']
             
-            # Выполнено
             cur.execute("SELECT COUNT(*) FROM todos WHERE completed = TRUE")
             completed = cur.fetchone()['count']
             
-            # В процессе
             cur.execute("SELECT COUNT(*) FROM todos WHERE completed = FALSE")
             pending = cur.fetchone()['count']
             
-            # Просрочено
             cur.execute("""
                 SELECT COUNT(*) FROM todos 
                 WHERE completed = FALSE AND due_date < CURRENT_DATE
             """)
             overdue = cur.fetchone()['count']
             
-            # По категориям
             cur.execute("""
                 SELECT category, COUNT(*) as count 
                 FROM todos 
