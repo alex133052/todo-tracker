@@ -8,7 +8,6 @@ import psycopg2
 import os
 from psycopg2.extras import RealDictCursor
 
-# Настройки JWT
 SECRET_KEY = "your-super-secret-key-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -23,7 +22,7 @@ def get_db_connection():
     user = os.getenv("DATABASE_USER", "postgres")
     dsn = f"dbname={db_name} user={user} password={password} host={host} port=5432"
     conn = psycopg2.connect(dsn)
-    conn.cursor_factory = RealDictCursor  # Возвращаем словари вместо кортежей
+    conn.cursor_factory = RealDictCursor
     return conn
 
 def verify_password(plain_password, hashed_password):
@@ -32,14 +31,14 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-def create_access_token( dict: dict, expires_delta: Optional[timedelta] = None):
+# ИСПРАВЛЕНО: параметр называется data
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def authenticate_user(email: str, password: str):
-    """Проверяет email/пароль и возвращает пользователя или None"""
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
@@ -67,7 +66,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
     
-    # Проверяем, что пользователь существует
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
