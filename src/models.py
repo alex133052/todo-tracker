@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import date
+from datetime import date, datetime  # <-- Добавили datetime
 
 class TodoCreate(BaseModel):
     title: str
@@ -22,7 +22,7 @@ class TodoResponse(BaseModel):
     category: str
     due_date: Optional[date]
     completed: bool
-    created_at: str
+    created_at: datetime  # <-- ИЗМЕНИЛИ str НА datetime
 
 class StatisticsResponse(BaseModel):
     total: int
