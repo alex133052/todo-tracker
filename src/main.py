@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.database import TodoDatabase
 from src.models import UserCreate, Token
 from src.auth import create_access_token, get_current_user, authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES
-from src.email_service import send_verification_email, send_overdue_reminder
+from src.email_service import send_verification_email
 from datetime import timedelta
 from typing import Optional
 from validate_email import validate_email
@@ -12,7 +12,6 @@ import os
 
 app = FastAPI(title="Todo Tracker Pro")
 
-# Разрешаем запросы с любого источника
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,36 +27,32 @@ def startup():
     db.init_db()
     print("✅ Server started successfully")
 
-# ================= ГЛАВНАЯ СТРАНИЦА =================
 @app.get("/")
 def root():
-    # Важно: путь должен быть относительно корня проекта
     return FileResponse("src/index.html")
-
-# ================= АВТОРИЗАЦИЯ =================
 
 @app.post("/auth/register", response_model=dict)
 def register(user: UserCreate):
-    # 1. Валидация email (проверка существования домена)
-    is_valid = validate_email(user.email, check_mx=True, verify=True)
-    # Если verify=True не работает в некоторых сетях, можно поставить False, но check_mx=True обязательно
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Некорректный email или домен не существует")
-
-    # 2. Создание пользователя
     try:
+        # Упрощённая проверка email (без verify=True, чтобы избежать таймаутов)
+        is_valid = validate_email(user.email, check_mx=True)
+        
+        if not is_valid:
+            # Для тестов можно раскомментировать pass вместо raise
+            # pass
+            raise HTTPException(status_code=400, detail="Некорректный email или домен")
+
         new_user = db.create_user(user.email, user.password)
         
-        # 3. Отправка письма (если SMTP настроен)
-        # Если SMTP не настроен, эта функция вернет False, но пользователь создастся
-        # В продакшене тут можно добавить проверку
+        # Отправка письма с подтверждением
         try:
             send_verification_email(new_user['email'], new_user.get('verification_token', 'test_token'))
             print(f"📧 Verification email sent to {new_user['email']}")
         except Exception as e:
-            print(f"️ Email sending failed: {e}")
-        
+            print(f"⚠️ Email sending failed: {e}")
+            
         return {"message": "Пользователь создан. Проверьте почту для подтверждения."}
+        
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -75,7 +70,6 @@ def login(user: UserCreate):
     if not db_user:
         raise HTTPException(status_code=401, detail="Неверный email или пароль")
     
-    # Проверка верификации
     if not db_user.get('is_verified'):
         raise HTTPException(status_code=403, detail="Аккаунт не подтвержден. Проверьте почту.")
     
@@ -84,8 +78,6 @@ def login(user: UserCreate):
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {"access_token": access_token, "token_type": "bearer"}
-
-# ================= ЗАДАЧИ =================
 
 @app.post("/todos")
 def create_todo(todo: dict, current_user: dict = Depends(get_current_user)):
