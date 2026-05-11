@@ -6,9 +6,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import psycopg2
 import os
+from psycopg2.extras import RealDictCursor
 
 # Настройки JWT
-SECRET_KEY = "your-super-secret-key-change-in-production"  # В продакшене вынести в .env!
+SECRET_KEY = "your-super-secret-key-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -21,7 +22,9 @@ def get_db_connection():
     db_name = os.getenv("DATABASE_NAME", "postgres")
     user = os.getenv("DATABASE_USER", "postgres")
     dsn = f"dbname={db_name} user={user} password={password} host={host} port=5432"
-    return psycopg2.connect(dsn)
+    conn = psycopg2.connect(dsn)
+    conn.cursor_factory = RealDictCursor  # <-- ВАЖНО! Чтобы возвращались словари
+    return conn
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -29,7 +32,7 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token( dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
