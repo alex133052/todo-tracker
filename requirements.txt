@@ -6,6 +6,6 @@ python-jose[cryptography]
 passlib[bcrypt]
 bcrypt==3.2.2
 validate-email
-pyDNS
+dnspython
 apscheduler
 aiofiles

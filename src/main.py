@@ -12,6 +12,7 @@ import os
 
 app = FastAPI(title="Todo Tracker Pro")
 
+# Разрешаем запросы с любого источника (для фронтенда)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,31 +25,36 @@ db = TodoDatabase()
 
 @app.on_event("startup")
 def startup():
+    # Инициализация таблиц при запуске сервера
     db.init_db()
     print("✅ Server started successfully")
 
+# ================= ГЛАВНАЯ СТРАНИЦА =================
 @app.get("/")
 def root():
+    # Отдаем файл index.html
     return FileResponse("src/index.html")
+
+# ================= АВТОРИЗАЦИЯ =================
 
 @app.post("/auth/register", response_model=dict)
 def register(user: UserCreate):
     try:
-        # Упрощённая проверка email с обработкой отсутствия pyDNS
+        # Пытаемся проверить MX-записи (существует ли домен)
+        # Если pyDNS не установлен, это вызовет ошибку, которую мы поймаем в except
         try:
-            # Пробуем полную проверку (требует pyDNS)
             is_valid = validate_email(user.email, check_mx=True)
-        except Exception as e:
-            # Если pyDNS не установлен, проверяем только формат
-            print(f"⚠️ pyDNS not installed, using basic validation: {e}")
+        except Exception:
+            # Запасной вариант: просто проверяем наличие @ и точки
             is_valid = "@" in user.email and "." in user.email.split("@")[-1]
         
         if not is_valid:
             raise HTTPException(status_code=400, detail="Некорректный email")
 
+        # Создаем пользователя в БД
         new_user = db.create_user(user.email, user.password)
         
-        # Отправка письма с подтверждением
+        # Отправляем письмо для подтверждения
         try:
             send_verification_email(new_user['email'], new_user.get('verification_token', 'test_token'))
             print(f"📧 Verification email sent to {new_user['email']}")
@@ -58,6 +64,7 @@ def register(user: UserCreate):
         return {"message": "Пользователь создан. Проверьте почту для подтверждения."}
         
     except ValueError as e:
+        # Если email уже занят
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/verify")
@@ -74,6 +81,7 @@ def login(user: UserCreate):
     if not db_user:
         raise HTTPException(status_code=401, detail="Неверный email или пароль")
     
+    # Проверка: подтвержден ли email
     if not db_user.get('is_verified'):
         raise HTTPException(status_code=403, detail="Аккаунт не подтвержден. Проверьте почту.")
     
@@ -82,6 +90,8 @@ def login(user: UserCreate):
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+# ================= ЗАДАЧИ (TODOS) =================
 
 @app.post("/todos")
 def create_todo(todo: dict, current_user: dict = Depends(get_current_user)):
@@ -96,6 +106,7 @@ def create_todo(todo: dict, current_user: dict = Depends(get_current_user)):
 
 @app.get("/todos")
 def get_todos(current_user: dict = Depends(get_current_user)):
+    # Возвращаем только задачи текущего пользователя
     return db.get_all_todos(current_user['id'])
 
 @app.put("/todos/{todo_id}")
