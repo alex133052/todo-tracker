@@ -5,34 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Todo Tracker Pro</title>
     <style>
-        /* ... (твои старые стили оставляем, добавляем новые) ... */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 1rem; }
-        .container { max-width: 800px; margin: 0 auto; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 1rem; }
+        .container { max-width: 900px; margin: 0 auto; }
         
-        /* Auth Styles */
-        .auth-container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); max-width: 400px; margin: 50px auto; text-align: center; }
-        .auth-input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; }
-        .auth-btn { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; margin-top: 10px; }
-        .auth-btn:hover { background: #5568d3; }
-        .auth-switch { margin-top: 15px; font-size: 0.9rem; color: #666; cursor: pointer; text-decoration: underline; }
-        
-        /* App Styles */
-        .hidden { display: none !important; }
+        /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; color: white; margin-bottom: 20px; }
         .logout-btn { background: rgba(255,255,255,0.2); border: none; padding: 8px 15px; color: white; border-radius: 20px; cursor: pointer; }
         .logout-btn:hover { background: rgba(255,255,255,0.4); }
         
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #667eea; }
+        .stat-label { color: #666; margin-top: 0.5rem; font-size: 0.85rem; }
+        
+        /* Auth */
+        .auth-container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); max-width: 400px; margin: 50px auto; text-align: center; }
+        .auth-input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; }
+        .auth-btn { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; margin-top: 10px; }
+        .auth-switch { margin-top: 15px; font-size: 0.9rem; color: #666; cursor: pointer; text-decoration: underline; }
+        
+        /* Cards */
         .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .form-grid input, .form-grid select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
         .add-btn { grid-column: 1 / -1; background: #4caf50; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; }
         
+        /* Tasks */
         .task-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f9f9f9; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #667eea; }
-        .task-item.completed { opacity: 0.6; text-decoration: line-through; border-left-color: #ccc; }
+        .task-item.completed { opacity: 0.6; text-decoration: line-through; border-left-color: #ccc; background: #e8f5e9; }
+        .task-item.overdue { border-left-color: #f44336; }
+        .task-content { flex: 1; }
+        .task-title { font-weight: 600; margin-bottom: 5px; }
+        .task-meta { font-size: 0.85rem; color: #666; }
+        .category-badge { background: #667eea; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-right: 8px; }
+        .due-date { color: #f44336; font-weight: 600; }
         .task-actions button { margin-left: 5px; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; }
         .btn-done { background: #4caf50; }
         .btn-del { background: #f44336; }
+        .empty-state { text-align: center; padding: 2rem; color: #999; }
+        
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -51,23 +65,28 @@
         <!-- APP SCREEN -->
         <div id="app-screen" class="hidden">
             <div class="header">
-                <h1>Todo Tracker Pro</h1>
+                <h1>📋 Todo Tracker Pro</h1>
                 <button class="logout-btn" onclick="logout()">Выйти</button>
             </div>
 
+            <!-- Statistics -->
+            <div class="stats" id="stats"></div>
+
+            <!-- Add Task Form -->
             <div class="card">
-                <h3>Новая задача</h3>
+                <h3 style="margin-bottom: 1rem;">➕ Новая задача</h3>
                 <div class="form-grid">
-                    <input type="text" id="task-title" placeholder="Название">
-                    <input type="text" id="task-category" placeholder="Категория">
+                    <input type="text" id="task-title" placeholder="Название задачи *">
+                    <input type="text" id="task-category" placeholder="Категория" value="Общее">
                     <input type="text" id="task-desc" placeholder="Описание" style="grid-column: 1/-1;">
                     <input type="date" id="task-date">
-                    <button class="add-btn" onclick="addTodo()">Добавить</button>
+                    <button class="add-btn" onclick="addTodo()">Добавить задачу</button>
                 </div>
             </div>
 
+            <!-- Task List -->
             <div class="card">
-                <h3>Мои задачи</h3>
+                <h3 style="margin-bottom: 1rem;">📝 Мои задачи</h3>
                 <ul id="task-list" style="list-style: none; padding: 0;"></ul>
             </div>
         </div>
@@ -75,10 +94,9 @@
     </div>
 
     <script>
-        const API = ""; // Пусто, т.к. фронтенд и бэкенд на одном домене
+        const API = "";
         let isLogin = true;
 
-        // Инициализация
         window.onload = function() {
             const token = localStorage.getItem('token');
             if (token) {
@@ -96,7 +114,7 @@
         function showApp() {
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
-            loadTodos();
+            refreshAll();
         }
 
         function toggleAuthMode() {
@@ -114,7 +132,6 @@
             
             try {
                 if (isLogin) {
-                    // Логин
                     const res = await fetch(`${API}/token`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
@@ -125,13 +142,12 @@
                     localStorage.setItem('token', data.access_token);
                     showApp();
                 } else {
-                    // Регистрация
                     const res = await fetch(`${API}/auth/register`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ email, password })
                     });
-                    if (!res.ok) throw new Error('Ошибка регистрации (возможно email занят)');
+                    if (!res.ok) throw new Error('Ошибка регистрации');
                     alert('Аккаунт создан! Теперь войди.');
                     toggleAuthMode();
                 }
@@ -146,8 +162,6 @@
             location.reload();
         }
 
-        // --- TODOS LOGIC ---
-
         async function getHeaders() {
             return {
                 'Content-Type': 'application/json',
@@ -155,30 +169,81 @@
             };
         }
 
+        // Load statistics
+        async function loadStats() {
+            try {
+                const res = await fetch(`${API}/statistics`, { headers: await getHeaders() });
+                if (!res.ok) return;
+                const stats = await res.json();
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.total}</div>
+                        <div class="stat-label">Всего задач</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #4caf50">${stats.completed}</div>
+                        <div class="stat-label">Выполнено</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #ff9800">${stats.pending}</div>
+                        <div class="stat-label">В процессе</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #f44336">${stats.overdue}</div>
+                        <div class="stat-label">Просрочено</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #9c27b0">${stats.completion_rate}%</div>
+                        <div class="stat-label">Успешность</div>
+                    </div>
+                `;
+            } catch (e) { console.error('Stats error:', e); }
+        }
+
         async function loadTodos() {
             try {
                 const res = await fetch(`${API}/todos`, { headers: await getHeaders() });
-                if (res.status === 401) logout(); // Если токен протух
+                if (res.status === 401) logout();
                 const todos = await res.json();
                 const list = document.getElementById('task-list');
-                list.innerHTML = todos.map(t => `
-                    <li class="task-item ${t.completed ? 'completed' : ''}">
-                        <div>
-                            <strong>${t.title}</strong> <small>(${t.category})</small><br>
-                            <small>${t.description || ''} ${t.due_date ? '| 📅 ' + t.due_date : ''}</small>
-                        </div>
-                        <div class="task-actions">
-                            <button class="btn-done" onclick="toggleTodo(${t.id})">${t.completed ? '↩️' : '✅'}</button>
-                            <button class="btn-del" onclick="deleteTodo(${t.id})">🗑️</button>
-                        </div>
-                    </li>
-                `).join('');
+                
+                if (todos.length === 0) {
+                    list.innerHTML = '<div class="empty-state">📭 Нет задач. Добавь первую!</div>';
+                    return;
+                }
+                
+                const today = new Date().toISOString().split('T')[0];
+                list.innerHTML = todos.map(t => {
+                    const isOverdue = !t.completed && t.due_date && t.due_date < today;
+                    return `
+                        <li class="task-item ${t.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}">
+                            <div class="task-content">
+                                <div class="task-title">${t.title}</div>
+                                <div class="task-meta">
+                                    <span class="category-badge">${t.category}</span>
+                                    ${t.due_date ? `<span class="due-date">📅 ${formatDate(t.due_date)} ${isOverdue ? '(просрочено)' : ''}</span>` : ''}
+                                    ${t.description ? `<span>📝 ${t.description}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="task-actions">
+                                <button class="btn-done" onclick="toggleTodo(${t.id})">${t.completed ? '↩️' : '✅'}</button>
+                                <button class="btn-del" onclick="deleteTodo(${t.id})">🗑️</button>
+                            </div>
+                        </li>
+                    `;
+                }).join('');
             } catch (e) { console.error(e); }
         }
 
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ru-RU');
+        }
+
         async function addTodo() {
-            const title = document.getElementById('task-title').value;
-            if (!title) return alert('Введите название');
+            const title = document.getElementById('task-title').value.trim();
+            if (!title) return alert('Введите название задачи!');
             
             await fetch(`${API}/todos`, {
                 method: 'POST',
@@ -190,18 +255,20 @@
                     due_date: document.getElementById('task-date').value || null
                 })
             });
+            
             document.getElementById('task-title').value = '';
-            loadTodos();
+            document.getElementById('task-desc').value = '';
+            document.getElementById('task-date').value = '';
+            await refreshAll();
         }
 
         async function toggleTodo(id) {
-            // Просто переключаем статус
             await fetch(`${API}/todos/${id}`, {
                 method: 'PUT',
                 headers: await getHeaders(),
-                body: JSON.stringify({ completed: true }) // Упрощено
+                body: JSON.stringify({ completed: true })
             });
-            loadTodos();
+            await refreshAll();
         }
 
         async function deleteTodo(id) {
@@ -209,7 +276,12 @@
                 method: 'DELETE',
                 headers: await getHeaders()
             });
-            loadTodos();
+            await refreshAll();
+        }
+
+        async function refreshAll() {
+            await loadStats();
+            await loadTodos();
         }
     </script>
 </body>
