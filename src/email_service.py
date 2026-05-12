@@ -5,7 +5,8 @@ UNISENDER_API_KEY = os.getenv("UNISENDER_API_KEY")
 EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@todo-tracker.app")
 APP_URL = os.getenv("APP_URL", "http://localhost:8000")
 
-API_URL = "https://go2.unisender.ru/api/v3/emails/transactional"
+# ✅ Правильный endpoint для UniSender Go API v3 (исправлен 404)
+API_URL = "https://go2.unisender.ru/api/v3/messages/email"
 
 def send_email(to_email: str, subject: str, html_content: str):
     """Отправляет email через UniSender Go API"""
@@ -13,7 +14,7 @@ def send_email(to_email: str, subject: str, html_content: str):
         "Authorization": f"Api-Key {UNISENDER_API_KEY}",
         "Content-Type": "application/json"
     }
-    
+
     payload = {
         "from": {"name": "Todo Tracker Pro", "email": EMAIL_FROM},
         "to": [{"email": to_email}],
@@ -28,7 +29,7 @@ def send_email(to_email: str, subject: str, html_content: str):
         return True
     except Exception as e:
         print(f"❌ Email failed: {e}")
-        if hasattr(response, 'text'):
+        if 'response' in locals() and hasattr(response, 'text'):
             print(f"📄 Response: {response.text}")
         return False
 
