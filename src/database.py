@@ -211,3 +211,33 @@ class TodoDatabase:
                 "overdue": overdue,
                 "completion_rate": completion_rate
             }
+
+    def get_overdue_report(self):
+        """
+        Возвращает словарь: { 'email_пользователя': [список просроченных задач] }
+        """
+        conn = self._get_connection()
+        report = {}
+        
+        with conn.cursor() as cur:
+            # 1. Берем все просроченные НЕ выполненные задачи
+            cur.execute("""
+                SELECT u.email, t.title, t.due_date 
+                FROM todos t
+                JOIN users u ON t.user_id = u.id
+                WHERE t.completed = FALSE 
+                AND t.due_date < CURRENT_DATE
+            """)
+            rows = cur.fetchall()
+            
+            # 2. Группируем их по email
+            for row in rows:
+                email = row['email']
+                if email not in report:
+                    report[email] = []
+                report[email].append({
+                    'title': row['title'],
+                    'due_date': str(row['due_date'])
+                })
+                
+        return report
