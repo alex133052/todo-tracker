@@ -82,8 +82,8 @@ def login(user: UserCreate):
         raise HTTPException(status_code=401, detail="Неверный email или пароль")
     
     # Проверка: подтвержден ли email
-    if not db_user.get('is_verified'):
-        raise HTTPException(status_code=403, detail="Аккаунт не подтвержден. Проверьте почту.")
+    #if not db_user.get('is_verified'):
+    #    raise HTTPException(status_code=403, detail="Аккаунт не подтвержден. Проверьте почту.")
     
     access_token = create_access_token(
         data={"sub": db_user['email']},
