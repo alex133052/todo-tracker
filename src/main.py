@@ -9,6 +9,8 @@ from datetime import timedelta
 from typing import Optional
 from validate_email import validate_email
 import os
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime
 
 app = FastAPI(title="Todo Tracker Pro")
 
@@ -23,11 +25,36 @@ app.add_middleware(
 
 db = TodoDatabase()
 
+from apscheduler.schedulers.background import BackgroundScheduler
+
+scheduler = BackgroundScheduler()
+
+def send_daily_reminders_job():
+    """Эта функция запускается автоматически по расписанию"""
+    print("⏰ Запуск проверки просроченных задач...")
+    try:
+        report = db.get_overdue_report()
+        for email, tasks in report.items():
+            print(f"📧 Отправка напоминания для {email} ({len(tasks)} задач)")
+            from src.email_service import send_overdue_reminder
+            send_overdue_reminder(email, tasks)
+    except Exception as e:
+        print(f"❌ Ошибка в планировщике: {e}")
+
 @app.on_event("startup")
 def startup():
-    # Инициализация таблиц при запуске сервера
     db.init_db()
     print("✅ Server started successfully")
+    
+    # Запускаем проверку каждый час (для тестов). 
+    # Позже поменяем на каждое утро: scheduler.add_job(..., 'cron', day_of_week='mon-fri', hour='9')
+    scheduler.add_job(send_daily_reminders_job, 'cron', hour='*') 
+    scheduler.start()
+    print("📅 Scheduler started: Checking overdue tasks every hour")
+
+@app.on_event("shutdown")
+def shutdown():
+    scheduler.shutdown()
 
 # ================= ГЛАВНАЯ СТРАНИЦА =================
 @app.get("/")
