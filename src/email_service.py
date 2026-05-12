@@ -1,38 +1,35 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 import os
 
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+UNISENDER_API_KEY = os.getenv("UNISENDER_API_KEY")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@todo-tracker.app")
 APP_URL = os.getenv("APP_URL", "http://localhost:8000")
 
-def send_email(to_email: str, subject: str, html_content: str):
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = SMTP_USER
-    msg["To"] = to_email
+API_URL = "https://go2.unisender.ru/api/v3/emails/transactional"
 
-    part = MIMEText(html_content, "html")
-    msg.attach(part)
+def send_email(to_email: str, subject: str, html_content: str):
+    """Отправляет email через UniSender Go API"""
+    headers = {
+        "Authorization": f"Api-Key {UNISENDER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "from": {"name": "Todo Tracker Pro", "email": EMAIL_FROM},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "html": html_content
+    }
 
     try:
-        if SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(msg)
-        else:
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(msg)
-                
-        print(f"✅ Email sent to {to_email}")
+        response = requests.post(API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        print(f"✅ Email sent to {to_email} via UniSender API")
         return True
     except Exception as e:
         print(f"❌ Email failed: {e}")
+        if hasattr(response, 'text'):
+            print(f"📄 Response: {response.text}")
         return False
 
 def send_verification_email(email: str, token: str):
@@ -72,16 +69,19 @@ def send_verification_email(email: str, token: str):
 def send_overdue_reminder(email: str, tasks: list):
     tasks_list = ""
     for t in tasks:
-        tasks_list += f"<li>{t['title']} (до: {t['due_date']})</li>"
+        tasks_list += f"<li style='margin: 5px 0;'>🔴 <b>{t['title']}</b> (срок: {t['due_date']})</li>"
     
-    html = """
+    html = f"""
     <!DOCTYPE html>
     <html>
-    <body>
-        <h1>У вас есть просроченные задачи!</h1>
-        <ul>TASKS_PLACEHOLDER</ul>
+    <body style="font-family: sans-serif; color: #333;">
+        <h2 style="color: #d9534f;">⚠️ У вас есть просроченные задачи!</h2>
+        <p>Напоминаем, что следующие задачи не выполнены в срок:</p>
+        <ul style="padding-left: 20px;">
+            {tasks_list}
+        </ul>
+        <p>Пожалуйста, зайдите в приложение и обновите статус.</p>
     </body>
     </html>
-    """.replace("TASKS_PLACEHOLDER", tasks_list)
-    
-    return send_email(email, "Напоминание: просроченные задачи", html)
+    """
+    return send_email(email, "Напоминание: Просроченные задачи", html)
