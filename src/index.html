@@ -5,46 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Todo Tracker Pro</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 1rem; }
+        /* === ПЕРЕМЕННЫЕ (СВЕТЛАЯ ТЕМА ПО УМОЛЧАНИЮ) === */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-sec: #666666;
+            --input-bg: #ffffff;
+            --input-border: #dddddd;
+            --badge-bg: #667eea;
+            --badge-text: #ffffff;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --hover-bg: #f5f5f5;
+        }
+
+        /* === ТЁМНАЯ ТЕМА === */
+        .dark-theme {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --card-bg: #1e293b;
+            --text-main: #f1f5f9;
+            --text-sec: #94a3b8;
+            --input-bg: #334155;
+            --input-border: #475569;
+            --badge-bg: #3b82f6;
+            --badge-text: #ffffff;
+            --shadow: 0 4px 6px rgba(0,0,0,0.5);
+            --hover-bg: #334155;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; transition: background-color 0.3s, color 0.3s; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-gradient); min-height: 100vh; padding: 1rem; color: var(--text-main); }
         .container { max-width: 900px; margin: 0 auto; }
         
         /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; color: white; margin-bottom: 20px; }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .btn-icon { background: rgba(255,255,255,0.2); border: none; padding: 8px 12px; color: white; border-radius: 20px; cursor: pointer; font-size: 1.2rem; }
+        .btn-icon:hover { background: rgba(255,255,255,0.4); }
         .logout-btn { background: rgba(255,255,255,0.2); border: none; padding: 8px 15px; color: white; border-radius: 20px; cursor: pointer; }
-        .logout-btn:hover { background: rgba(255,255,255,0.4); }
         
         /* Stats */
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-        .stat-card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        .stat-card { background: var(--card-bg); color: var(--text-main); padding: 1.5rem; border-radius: 12px; box-shadow: var(--shadow); text-align: center; }
         .stat-value { font-size: 2rem; font-weight: bold; color: #667eea; }
-        .stat-label { color: #666; margin-top: 0.5rem; font-size: 0.85rem; }
+        .dark-theme .stat-value { color: #60a5fa; }
+        .stat-label { color: var(--text-sec); margin-top: 0.5rem; font-size: 0.85rem; }
         
         /* Auth */
-        .auth-container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); max-width: 400px; margin: 50px auto; text-align: center; }
-        .auth-input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; }
+        .auth-container { background: var(--card-bg); padding: 2rem; border-radius: 12px; box-shadow: var(--shadow); max-width: 400px; margin: 50px auto; text-align: center; color: var(--text-main); }
+        .auth-input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--text-main); }
         .auth-btn { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; margin-top: 10px; }
-        .auth-switch { margin-top: 15px; font-size: 0.9rem; color: #666; cursor: pointer; text-decoration: underline; }
+        .auth-switch { margin-top: 15px; font-size: 0.9rem; color: var(--text-sec); cursor: pointer; text-decoration: underline; }
         
         /* Cards */
-        .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .card { background: var(--card-bg); padding: 1.5rem; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 20px; color: var(--text-main); }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .form-grid input, .form-grid select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        .form-grid input, .form-grid select { padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--text-main); }
         .add-btn { grid-column: 1 / -1; background: #4caf50; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .add-btn:hover { background: #45a049; }
         
+        /* Toolbar */
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .csv-btn { background: #ff9800; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
+        .csv-btn:hover { background: #f57c00; }
+
         /* Tasks */
-        .task-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f9f9f9; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #667eea; }
-        .task-item.completed { opacity: 0.6; text-decoration: line-through; border-left-color: #ccc; background: #e8f5e9; }
+        .task-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--hover-bg); margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #667eea; color: var(--text-main); }
+        .task-item.completed { opacity: 0.6; text-decoration: line-through; border-left-color: #ccc; }
         .task-item.overdue { border-left-color: #f44336; }
         .task-content { flex: 1; }
         .task-title { font-weight: 600; margin-bottom: 5px; }
-        .task-meta { font-size: 0.85rem; color: #666; }
-        .category-badge { background: #667eea; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-right: 8px; }
+        .task-meta { font-size: 0.85rem; color: var(--text-sec); }
+        .category-badge { background: var(--badge-bg); color: var(--badge-text); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-right: 8px; }
         .due-date { color: #f44336; font-weight: 600; }
         .task-actions button { margin-left: 5px; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; }
         .btn-done { background: #4caf50; }
         .btn-del { background: #f44336; }
-        .empty-state { text-align: center; padding: 2rem; color: #999; }
+        .empty-state { text-align: center; padding: 2rem; color: var(--text-sec); }
         
         .hidden { display: none !important; }
     </style>
@@ -66,7 +103,10 @@
         <div id="app-screen" class="hidden">
             <div class="header">
                 <h1>📋 Todo Tracker Pro</h1>
-                <button class="logout-btn" onclick="logout()">Выйти</button>
+                <div class="header-actions">
+                    <button class="btn-icon" id="theme-toggle" onclick="toggleTheme()" title="Тёмная тема">🌙</button>
+                    <button class="logout-btn" onclick="logout()">Выйти</button>
+                </div>
             </div>
 
             <!-- Statistics -->
@@ -86,8 +126,11 @@
 
             <!-- Task List -->
             <div class="card">
-                <h3 style="margin-bottom: 1rem;">📝 Мои задачи</h3>
-                <ul id="task-list" style="list-style: none; padding: 0;"></ul>
+                <div class="toolbar">
+                    <h3 style="margin: 0;">📝 Мои задачи</h3>
+                    <button class="csv-btn" onclick="exportToCSV()">📥 Скачать CSV</button>
+                </div>
+                <ul id="task-list" style="list-style: none; padding: 0; margin-top: 1rem;"></ul>
             </div>
         </div>
 
@@ -96,15 +139,29 @@
     <script>
         const API = "";
         let isLogin = true;
+        let allTodos = []; // Храним задачи глобально для экспорта
 
         window.onload = function() {
             const token = localStorage.getItem('token');
+            // Загрузка темы
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-theme');
+                document.getElementById('theme-toggle').innerText = '☀️';
+            }
+            
             if (token) {
                 showApp();
             } else {
                 showAuth();
             }
         };
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+            const isDark = document.body.classList.contains('dark-theme');
+            document.getElementById('theme-toggle').innerText = isDark ? '☀️' : '🌙';
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        }
 
         function showAuth() {
             document.getElementById('auth-screen').classList.remove('hidden');
@@ -204,16 +261,16 @@
             try {
                 const res = await fetch(`${API}/todos`, { headers: await getHeaders() });
                 if (res.status === 401) logout();
-                const todos = await res.json();
+                allTodos = await res.json(); // Сохраняем в глобальную переменную
                 const list = document.getElementById('task-list');
                 
-                if (todos.length === 0) {
-                    list.innerHTML = '<div class="empty-state">📭 Нет задач. Добавь первую!</div>';
+                if (allTodos.length === 0) {
+                    list.innerHTML = '<div class="empty-state"> Нет задач. Добавь первую!</div>';
                     return;
                 }
                 
                 const today = new Date().toISOString().split('T')[0];
-                list.innerHTML = todos.map(t => {
+                list.innerHTML = allTodos.map(t => {
                     const isOverdue = !t.completed && t.due_date && t.due_date < today;
                     return `
                         <li class="task-item ${t.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}">
@@ -221,7 +278,7 @@
                                 <div class="task-title">${t.title}</div>
                                 <div class="task-meta">
                                     <span class="category-badge">${t.category}</span>
-                                    ${t.due_date ? `<span class="due-date">📅 ${formatDate(t.due_date)} ${isOverdue ? '(просрочено)' : ''}</span>` : ''}
+                                    ${t.due_date ? `<span class="due-date"> ${formatDate(t.due_date)} ${isOverdue ? '(просрочено)' : ''}</span>` : ''}
                                     ${t.description ? `<span>📝 ${t.description}</span>` : ''}
                                 </div>
                             </div>
@@ -239,6 +296,28 @@
             if (!dateStr) return '';
             const date = new Date(dateStr);
             return date.toLocaleDateString('ru-RU');
+        }
+
+        // === ЭКСПОРТ В CSV ===
+        function exportToCSV() {
+            if (allTodos.length === 0) return alert("Нет задач для экспорта!");
+
+            let csvContent = "Название,Категория,Статус,Срок,Описание\n";
+            
+            allTodos.forEach(t => {
+                const status = t.completed ? "Выполнено" : "В процессе";
+                const desc = t.description ? t.description.replace(/,/g, " ") : ""; // Убираем запятые из описания
+                csvContent += `"${t.title}","${t.category}","${status}","${t.due_date || ''}","${desc}"\n`;
+            });
+
+            const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "todo_tasks.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         async function addTodo() {
@@ -263,10 +342,13 @@
         }
 
         async function toggleTodo(id) {
+            const task = allTodos.find(t => t.id === id);
+            if (!task) return;
+            
             await fetch(`${API}/todos/${id}`, {
                 method: 'PUT',
                 headers: await getHeaders(),
-                body: JSON.stringify({ completed: true })
+                body: JSON.stringify({ completed: !task.completed })
             });
             await refreshAll();
         }
