@@ -108,6 +108,9 @@ def authenticate_user(email: str, password: str):
     user = db.get_user_by_email(email)
     if not user:
         return False
+    # Обрезаем пароль до 72 символов (ограничение bcrypt)
+    if len(password) > 72:
+        password = password[:72]
     if not verify_password(password, user['hashed_password']):
         return False
     return user
@@ -133,7 +136,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
-    except jwt.exceptions.InvalidTokenError:  # ← ИСПРАВЛЕНО
+    except jwt.exceptions.InvalidTokenError:
         raise credentials_exception
     user = db.get_user_by_email(email)
     if user is None:
@@ -151,7 +154,7 @@ def get_current_admin(token: str = Depends(oauth2_scheme)):
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
-    except jwt.exceptions.InvalidTokenError:  # ← ИСПРАВЛЕНО
+    except jwt.exceptions.InvalidTokenError:
         raise credentials_exception
         
     if email != ADMIN_EMAIL:
@@ -173,6 +176,10 @@ def verify_user(user_id: int, admin_email: str = Depends(get_current_admin)):
 # === AUTH ENDPOINTS ===
 @app.post("/auth/register", response_model=UserResponse)
 def register(user: UserCreate):
+    # Обрезаем пароль при регистрации
+    if len(user.password) > 72:
+        user.password = user.password[:72]
+    
     new_user = db.create_user(user.email, user.password)
     
     # Отправляем email с подтверждением
