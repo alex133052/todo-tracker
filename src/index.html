@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Todo Tracker Pro</title>
     <style>
         /* === ПЕРЕМЕННЫЕ (СВЕТЛАЯ ТЕМА ПО УМОЛЧАНИЮ) === */
@@ -17,6 +17,10 @@
             --badge-text: #ffffff;
             --shadow: 0 4px 6px rgba(0,0,0,0.1);
             --hover-bg: #f5f5f5;
+            --danger: #f44336;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --primary: #667eea;
         }
 
         /* === ТЁМНАЯ ТЕМА === */
@@ -34,56 +38,308 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; transition: background-color 0.3s, color 0.3s; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-gradient); min-height: 100vh; padding: 1rem; color: var(--text-main); }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: var(--bg-gradient); 
+            min-height: 100vh; 
+            min-height: 100dvh; /* Для мобильных */
+            padding: 1rem; 
+            color: var(--text-main);
+            -webkit-tap-highlight-color: transparent;
+        }
+        
         .container { max-width: 900px; margin: 0 auto; }
         
         /* Header */
-        .header { display: flex; justify-content: space-between; align-items: center; color: white; margin-bottom: 20px; }
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            color: white; 
+            margin-bottom: 20px; 
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header h1 { font-size: 1.5rem; }
         .header-actions { display: flex; gap: 10px; align-items: center; }
-        .btn-icon { background: rgba(255,255,255,0.2); border: none; padding: 8px 12px; color: white; border-radius: 20px; cursor: pointer; font-size: 1.2rem; }
+        .btn-icon { 
+            background: rgba(255,255,255,0.2); 
+            border: none; 
+            padding: 10px 14px; 
+            color: white; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-size: 1.2rem;
+            min-width: 44px;
+            min-height: 44px;
+        }
         .btn-icon:hover { background: rgba(255,255,255,0.4); }
-        .logout-btn { background: rgba(255,255,255,0.2); border: none; padding: 8px 15px; color: white; border-radius: 20px; cursor: pointer; }
+        .logout-btn { 
+            background: rgba(255,255,255,0.2); 
+            border: none; 
+            padding: 10px 15px; 
+            color: white; 
+            border-radius: 12px; 
+            cursor: pointer;
+            min-width: 44px;
+            min-height: 44px;
+        }
         
         /* Stats */
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-        .stat-card { background: var(--card-bg); color: var(--text-main); padding: 1.5rem; border-radius: 12px; box-shadow: var(--shadow); text-align: center; }
-        .stat-value { font-size: 2rem; font-weight: bold; color: #667eea; }
+        .stats { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+            gap: 1rem; 
+            margin-bottom: 2rem; 
+        }
+        .stat-card { 
+            background: var(--card-bg); 
+            color: var(--text-main); 
+            padding: 1.5rem; 
+            border-radius: 12px; 
+            box-shadow: var(--shadow); 
+            text-align: center; 
+        }
+        .stat-value { 
+            font-size: 2rem; 
+            font-weight: bold; 
+            color: var(--primary); 
+        }
         .dark-theme .stat-value { color: #60a5fa; }
         .stat-label { color: var(--text-sec); margin-top: 0.5rem; font-size: 0.85rem; }
         
         /* Auth */
-        .auth-container { background: var(--card-bg); padding: 2rem; border-radius: 12px; box-shadow: var(--shadow); max-width: 400px; margin: 50px auto; text-align: center; color: var(--text-main); }
-        .auth-input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--text-main); }
-        .auth-btn { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; margin-top: 10px; }
+        .auth-container { 
+            background: var(--card-bg); 
+            padding: 2rem; 
+            border-radius: 16px; 
+            box-shadow: var(--shadow); 
+            max-width: 400px; 
+            margin: 50px auto; 
+            text-align: center; 
+            color: var(--text-main); 
+        }
+        .auth-input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 10px 0; 
+            border: 2px solid var(--input-border); 
+            border-radius: 12px; 
+            background: var(--input-bg); 
+            color: var(--text-main);
+            font-size: 16px; /* Предотвращает зум на iOS */
+        }
+        .auth-btn { 
+            width: 100%; 
+            padding: 14px; 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-size: 1rem; 
+            margin-top: 10px;
+            min-height: 48px;
+        }
         .auth-switch { margin-top: 15px; font-size: 0.9rem; color: var(--text-sec); cursor: pointer; text-decoration: underline; }
         
         /* Cards */
-        .card { background: var(--card-bg); padding: 1.5rem; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 20px; color: var(--text-main); }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .form-grid input, .form-grid select { padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--text-main); }
-        .add-btn { grid-column: 1 / -1; background: #4caf50; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .add-btn:hover { background: #45a049; }
+        .card { 
+            background: var(--card-bg); 
+            padding: 1.5rem; 
+            border-radius: 16px; 
+            box-shadow: var(--shadow); 
+            margin-bottom: 20px; 
+            color: var(--text-main); 
+        }
+        .form-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 12px; 
+        }
+        .form-grid input, .form-grid select { 
+            padding: 12px; 
+            border: 2px solid var(--input-border); 
+            border-radius: 12px; 
+            background: var(--input-bg); 
+            color: var(--text-main);
+            font-size: 16px;
+            min-height: 44px;
+        }
+        .add-btn { 
+            grid-column: 1 / -1; 
+            background: var(--success); 
+            color: white; 
+            border: none; 
+            padding: 14px; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            margin-top: 10px;
+            min-height: 48px;
+            font-size: 1rem;
+        }
+        .add-btn:hover { opacity: 0.9; }
         
         /* Toolbar */
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .csv-btn { background: #ff9800; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
-        .csv-btn:hover { background: #f57c00; }
+        .toolbar { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 12px; 
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .csv-btn { 
+            background: var(--warning); 
+            color: white; 
+            border: none; 
+            padding: 10px 15px; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 0.9rem;
+            min-height: 44px;
+        }
+        .csv-btn:hover { opacity: 0.9; }
 
         /* Tasks */
-        .task-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--hover-bg); margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #667eea; color: var(--text-main); }
+        .task-list { list-style: none; padding: 0; margin-top: 1rem; }
+        .task-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-start;
+            padding: 16px; 
+            background: var(--hover-bg); 
+            margin-bottom: 10px; 
+            border-radius: 12px; 
+            border-left: 4px solid var(--primary); 
+            color: var(--text-main); 
+        }
         .task-item.completed { opacity: 0.6; text-decoration: line-through; border-left-color: #ccc; }
-        .task-item.overdue { border-left-color: #f44336; }
-        .task-content { flex: 1; }
-        .task-title { font-weight: 600; margin-bottom: 5px; }
-        .task-meta { font-size: 0.85rem; color: var(--text-sec); }
-        .category-badge { background: var(--badge-bg); color: var(--badge-text); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-right: 8px; }
-        .due-date { color: #f44336; font-weight: 600; }
-        .task-actions button { margin-left: 5px; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; }
-        .btn-done { background: #4caf50; }
-        .btn-del { background: #f44336; }
+        .task-item.overdue { border-left-color: var(--danger); }
+        .task-content { flex: 1; min-width: 0; } /* min-width: 0 для flex-контейнеров */
+        .task-title { font-weight: 600; margin-bottom: 6px; word-wrap: break-word; }
+        .task-meta { font-size: 0.85rem; color: var(--text-sec); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .category-badge { background: var(--badge-bg); color: var(--badge-text); padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; }
+        .due-date { color: var(--danger); font-weight: 600; }
+        .task-actions { 
+            display: flex; 
+            gap: 8px; 
+            margin-left: 10px; 
+            flex-shrink: 0;
+        }
+        .task-actions button { 
+            padding: 8px 12px; 
+            border: none; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            color: white;
+            font-size: 1.1rem;
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-done { background: var(--success); }
+        .btn-del { background: var(--danger); }
         .empty-state { text-align: center; padding: 2rem; color: var(--text-sec); }
         
         .hidden { display: none !important; }
+
+        /* ============================ */
+        /* === 📱 МОБИЛЬНАЯ АДАПТАЦИЯ === */
+        /* ============================ */
+        
+        /* Планшеты и маленькие ноутбуки */
+        @media (max-width: 768px) {
+            body { padding: 0.75rem; }
+            
+            .header { 
+                flex-direction: column; 
+                text-align: center; 
+                gap: 12px;
+            }
+            .header h1 { font-size: 1.3rem; }
+            
+            .stats { 
+                grid-template-columns: repeat(2, 1fr); 
+                gap: 0.75rem; 
+            }
+            .stat-card { padding: 1rem; }
+            .stat-value { font-size: 1.5rem; }
+            
+            .form-grid { 
+                grid-template-columns: 1fr; 
+            }
+            
+            .card { padding: 1.25rem; border-radius: 14px; }
+        }
+
+        /* Телефоны */
+        @media (max-width: 480px) {
+            body { padding: 0.5rem; }
+            
+            .header h1 { font-size: 1.1rem; }
+            
+            .stats { 
+                grid-template-columns: repeat(2, 1fr); 
+                gap: 0.5rem; 
+            }
+            .stat-card { 
+                padding: 0.75rem; 
+                border-radius: 10px;
+            }
+            .stat-value { font-size: 1.3rem; }
+            .stat-label { font-size: 0.75rem; }
+            
+            .card { 
+                padding: 1rem; 
+                border-radius: 12px;
+                margin-bottom: 12px;
+            }
+            
+            .auth-container { 
+                margin: 20px 0; 
+                padding: 1.5rem;
+            }
+            
+            .toolbar { 
+                flex-direction: column; 
+                align-items: stretch;
+            }
+            .toolbar h3 { margin-bottom: 8px; }
+            .csv-btn { width: 100%; }
+            
+            .task-item { 
+                flex-direction: column; 
+                padding: 12px;
+            }
+            .task-content { margin-bottom: 10px; }
+            .task-actions { 
+                margin-left: 0; 
+                width: 100%;
+                justify-content: flex-end;
+            }
+            .task-actions button {
+                flex: 1;
+            }
+            
+            /* Увеличиваем поля ввода для удобства */
+            input, select, button {
+                font-size: 16px !important; /* Предотвращает авто-зум на iOS */
+            }
+        }
+
+        /* Маленькие телефоны */
+        @media (max-width: 360px) {
+            .stats { 
+                grid-template-columns: 1fr; 
+            }
+            .stat-card { padding: 0.75rem; }
+        }
     </style>
 </head>
 <body>
@@ -92,11 +348,11 @@
         <!-- AUTH SCREEN -->
         <div id="auth-screen" class="auth-container hidden">
             <h2 id="auth-title">Вход</h2>
-            <input type="email" id="email" class="auth-input" placeholder="Email">
-            <input type="password" id="password" class="auth-input" placeholder="Пароль">
+            <input type="email" id="email" class="auth-input" placeholder="Email" autocomplete="email">
+            <input type="password" id="password" class="auth-input" placeholder="Пароль" autocomplete="current-password">
             <button class="auth-btn" onclick="handleAuth()" id="auth-action-btn">Войти</button>
             <div class="auth-switch" onclick="toggleAuthMode()" id="auth-switch-text">Нет аккаунта? Зарегистрироваться</div>
-            <p id="auth-error" style="color: red; margin-top: 10px; display: none;"></p>
+            <p id="auth-error" style="color: var(--danger); margin-top: 10px; display: none;"></p>
         </div>
 
         <!-- APP SCREEN -->
@@ -116,9 +372,9 @@
             <div class="card">
                 <h3 style="margin-bottom: 1rem;">➕ Новая задача</h3>
                 <div class="form-grid">
-                    <input type="text" id="task-title" placeholder="Название задачи *">
+                    <input type="text" id="task-title" placeholder="Название задачи *" autocomplete="off" style="grid-column: 1 / -1;">
                     <input type="text" id="task-category" placeholder="Категория" value="Общее">
-                    <input type="text" id="task-desc" placeholder="Описание" style="grid-column: 1/-1;">
+                    <input type="text" id="task-desc" placeholder="Описание">
                     <input type="date" id="task-date">
                     <button class="add-btn" onclick="addTodo()">Добавить задачу</button>
                 </div>
@@ -130,7 +386,7 @@
                     <h3 style="margin: 0;">📝 Мои задачи</h3>
                     <button class="csv-btn" onclick="exportToCSV()">📥 Скачать CSV</button>
                 </div>
-                <ul id="task-list" style="list-style: none; padding: 0; margin-top: 1rem;"></ul>
+                <ul id="task-list" class="task-list"></ul>
             </div>
         </div>
 
@@ -139,11 +395,10 @@
     <script>
         const API = "";
         let isLogin = true;
-        let allTodos = []; // Храним задачи глобально для экспорта
+        let allTodos = [];
 
         window.onload = function() {
             const token = localStorage.getItem('token');
-            // Загрузка темы
             if (localStorage.getItem('theme') === 'dark') {
                 document.body.classList.add('dark-theme');
                 document.getElementById('theme-toggle').innerText = '☀️';
@@ -226,7 +481,6 @@
             };
         }
 
-        // Load statistics
         async function loadStats() {
             try {
                 const res = await fetch(`${API}/statistics`, { headers: await getHeaders() });
@@ -238,15 +492,15 @@
                         <div class="stat-label">Всего задач</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" style="color: #4caf50">${stats.completed}</div>
+                        <div class="stat-value" style="color: var(--success)">${stats.completed}</div>
                         <div class="stat-label">Выполнено</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" style="color: #ff9800">${stats.pending}</div>
+                        <div class="stat-value" style="color: var(--warning)">${stats.pending}</div>
                         <div class="stat-label">В процессе</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" style="color: #f44336">${stats.overdue}</div>
+                        <div class="stat-value" style="color: var(--danger)">${stats.overdue}</div>
                         <div class="stat-label">Просрочено</div>
                     </div>
                     <div class="stat-card">
@@ -261,11 +515,11 @@
             try {
                 const res = await fetch(`${API}/todos`, { headers: await getHeaders() });
                 if (res.status === 401) logout();
-                allTodos = await res.json(); // Сохраняем в глобальную переменную
+                allTodos = await res.json();
                 const list = document.getElementById('task-list');
                 
                 if (allTodos.length === 0) {
-                    list.innerHTML = '<div class="empty-state"> Нет задач. Добавь первую!</div>';
+                    list.innerHTML = '<div class="empty-state">📭 Нет задач. Добавь первую!</div>';
                     return;
                 }
                 
@@ -278,7 +532,7 @@
                                 <div class="task-title">${t.title}</div>
                                 <div class="task-meta">
                                     <span class="category-badge">${t.category}</span>
-                                    ${t.due_date ? `<span class="due-date"> ${formatDate(t.due_date)} ${isOverdue ? '(просрочено)' : ''}</span>` : ''}
+                                    ${t.due_date ? `<span class="due-date">📅 ${formatDate(t.due_date)} ${isOverdue ? '(просрочено)' : ''}</span>` : ''}
                                     ${t.description ? `<span>📝 ${t.description}</span>` : ''}
                                 </div>
                             </div>
@@ -298,7 +552,6 @@
             return date.toLocaleDateString('ru-RU');
         }
 
-        // === ЭКСПОРТ В CSV ===
         function exportToCSV() {
             if (allTodos.length === 0) return alert("Нет задач для экспорта!");
 
@@ -306,7 +559,7 @@
             
             allTodos.forEach(t => {
                 const status = t.completed ? "Выполнено" : "В процессе";
-                const desc = t.description ? t.description.replace(/,/g, " ") : ""; // Убираем запятые из описания
+                const desc = t.description ? t.description.replace(/,/g, " ") : "";
                 csvContent += `"${t.title}","${t.category}","${status}","${t.due_date || ''}","${desc}"\n`;
             });
 
