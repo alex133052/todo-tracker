@@ -7,7 +7,7 @@ resend.api_key = os.getenv("RESEND_API_KEY")
 APP_URL = os.getenv("APP_URL", "http://localhost:8000")
 
 # Email аккаунта Resend (на который разрешена отправка в Sandbox)
-TEST_EMAIL = "alexi330@gmail.com"  # ← Твой email из Resend
+TEST_EMAIL = "alex1330@gmail.com"  # ← Твой email из Resend
 
 def send_email(to_email: str, subject: str, html_content: str):
     """
