@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime, timedelta
@@ -237,7 +238,13 @@ def delete_todo(todo_id: int, current_user: dict = Depends(get_current_user)):
 def get_statistics(current_user: dict = Depends(get_current_user)):
     return db.get_statistics(current_user['id'])
 
-# Root
+# === ROOT PAGE (FRONTEND) ===
 @app.get("/")
+async def root_page():
+    """Отдаёт index.html"""
+    return FileResponse("src/index.html")
+
+# Root API check
+@app.get("/api")
 def root():
     return {"message": "Todo Tracker Pro API", "status": "running"}
