@@ -6,21 +6,24 @@ resend.api_key = os.getenv("RESEND_API_KEY")
 
 APP_URL = os.getenv("APP_URL", "http://localhost:8000")
 
-# В Sandbox режиме письма уходят только на email, указанный при регистрации Resend
-# Укажи здесь свою личную почту (на которую зарегистрировал Resend)
-TEST_EMAIL = "alex1330@gmail.com"  # ← ЗАМЕНИ НА СВОЮ!
+# Email аккаунта Resend (на который разрешена отправка в Sandbox)
+TEST_EMAIL = "alexi330@gmail.com"  # ← Твой email из Resend
 
 def send_email(to_email: str, subject: str, html_content: str):
+    """
+    В Sandbox режиме Resend отправляет письма ТОЛЬКО на verified email.
+    Поэтому все письма шлем на TEST_EMAIL, но в логах показываем оригинального получателя.
+    """
     try:
         params = {
-            "from": "onboarding@resend.dev",  # Стандартный адрес для Sandbox
-            "to": to_email,  # ИЗМЕНЕНИЕ ЗДЕСЬ: отправляем тому, кто просил (to_email), а не себе
+            "from": "onboarding@resend.dev",
+            "to": TEST_EMAIL,  # ← Всегда шлем на ПРОВЕРЕННЫЙ email
             "subject": subject,
             "html": html_content
         }
         
         resend.Emails.send(params)
-        print(f"✅ Email sent via Resend")
+        print(f"✅ Email sent to {TEST_EMAIL} via Resend (original recipient: {to_email})")
         return True
     except Exception as e:
         print(f"❌ Email failed: {e}")
@@ -28,17 +31,35 @@ def send_email(to_email: str, subject: str, html_content: str):
 
 def send_verification_email(email: str, token: str):
     link = f"{APP_URL}/verify?token={token}"
-    html = f"""
+    html = """
     <!DOCTYPE html>
     <html>
-    <body style="font-family: sans-serif;">
-        <h1>📧 Подтвердите свою почту</h1>
-        <p>Привет! Спасибо за регистрацию в Todo Tracker Pro.</p>
-        <p><a href="{link}" style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0;">Подтвердить email</a></p>
-        <p>Или скопируй ссылку: {link}</p>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .button { 
+                display: inline-block; 
+                background: #667eea; 
+                color: white; 
+                padding: 12px 24px; 
+                text-decoration: none; 
+                border-radius: 5px;
+                margin: 20px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Подтвердите свою почту</h1>
+            <p>Привет! Спасибо за регистрацию в Todo Tracker Pro.</p>
+            <p>Нажмите кнопку ниже, чтобы подтвердить свой email:</p>
+            <a href="LINK_PLACEHOLDER" class="button">Подтвердить email</a>
+            <p>Или скопируйте эту ссылку: LINK_PLACEHOLDER</p>
+        </div>
     </body>
     </html>
-    """
+    """.replace("LINK_PLACEHOLDER", link)
     
     return send_email(email, "Подтверждение регистрации", html)
 
