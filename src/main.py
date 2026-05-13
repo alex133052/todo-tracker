@@ -112,7 +112,7 @@ def authenticate_user(email: str, password: str):
         return False
     return user
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token( dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -133,7 +133,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
-    except jwt.JWTError:
+    except jwt.exceptions.InvalidTokenError:  # ← ИСПРАВЛЕНО
         raise credentials_exception
     user = db.get_user_by_email(email)
     if user is None:
@@ -151,7 +151,7 @@ def get_current_admin(token: str = Depends(oauth2_scheme)):
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
-    except jwt.JWTError:
+    except jwt.exceptions.InvalidTokenError:  # ← ИСПРАВЛЕНО
         raise credentials_exception
         
     if email != ADMIN_EMAIL:
