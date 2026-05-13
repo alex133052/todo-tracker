@@ -80,6 +80,9 @@ class TodoDatabase:
 
     def create_user(self, email: str, password: str) -> dict:
         conn = self._get_connection()
+        # Обрезаем пароль до 72 символов (ограничение bcrypt)
+        if len(password) > 72:
+            password = password[:72]
         hashed_pw = pwd_context.hash(password)
         import secrets
         token = secrets.token_urlsafe(32)
