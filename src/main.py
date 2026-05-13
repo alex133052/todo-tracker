@@ -1,20 +1,19 @@
-from fastapi import FastAPI, HTTPException, Depends, Query
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from src.database import TodoDatabase
-from src.models import UserCreate, Token
-from src.auth import create_access_token, get_current_user, authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES
-from src.email_service import send_verification_email
-from datetime import timedelta
-from typing import Optional
-from validate_email import validate_email
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List
+from datetime import datetime, timedelta
+import jwt
+from passlib.context import CryptContext
 import os
+from src.database import TodoDatabase
+from src.email_service import send_verification_email, send_overdue_reminder
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime
 
 app = FastAPI(title="Todo Tracker Pro")
 
-# Разрешаем запросы с любого источника (для фронтенда)
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,10 +22,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Config
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
+# Database
 db = TodoDatabase()
 
-from apscheduler.schedulers.background import BackgroundScheduler
+# Password
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# OAuth2
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Scheduler
 scheduler = BackgroundScheduler()
 
 def send_daily_reminders_job():
@@ -36,7 +46,6 @@ def send_daily_reminders_job():
         report = db.get_overdue_report()
         for email, tasks in report.items():
             print(f"📧 Отправка напоминания для {email} ({len(tasks)} задач)")
-            from src.email_service import send_overdue_reminder
             send_overdue_reminder(email, tasks)
     except Exception as e:
         print(f"❌ Ошибка в планировщике: {e}")
@@ -46,8 +55,7 @@ def startup():
     db.init_db()
     print("✅ Server started successfully")
     
-    # Запускаем проверку каждый час (для тестов). 
-    # Позже поменяем на каждое утро: scheduler.add_job(..., 'cron', day_of_week='mon-fri', hour='9')
+    # Запускаем планировщик (каждый час)
     scheduler.add_job(send_daily_reminders_job, 'cron', hour='*') 
     scheduler.start()
     print("📅 Scheduler started: Checking overdue tasks every hour")
@@ -56,51 +64,124 @@ def startup():
 def shutdown():
     scheduler.shutdown()
 
-# ================= ГЛАВНАЯ СТРАНИЦА =================
-@app.get("/")
-def root():
-    # Отдаем файл index.html
-    return FileResponse("src/index.html")
+# Models
+class UserCreate(BaseModel):
+    email: str
+    password: str
 
-# ================= АВТОРИЗАЦИЯ =================
+class UserResponse(BaseModel):
+    email: str
+    is_verified: bool = False
 
-@app.post("/auth/register", response_model=dict)
-def register(user: UserCreate):
-    try:
-        # Пытаемся проверить MX-записи (существует ли домен)
-        # Если pyDNS не установлен, это вызовет ошибку, которую мы поймаем в except
-        try:
-            is_valid = validate_email(user.email, check_mx=True)
-        except Exception:
-            # Запасной вариант: просто проверяем наличие @ и точки
-            is_valid = "@" in user.email and "." in user.email.split("@")[-1]
-        
-        if not is_valid:
-            raise HTTPException(status_code=400, detail="Некорректный email")
+class TodoCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = "Общее"
+    due_date: Optional[str] = None
 
-        # Создаем пользователя в БД
-        new_user = db.create_user(user.email, user.password)
-        
-        # Отправляем письмо для подтверждения
-        try:
-            send_verification_email(new_user['email'], new_user.get('verification_token', 'test_token'))
-            print(f"📧 Verification email sent to {new_user['email']}")
-        except Exception as e:
-            print(f"⚠️ Email sending failed: {e}")
-            
-        return {"message": "Пользователь создан. Проверьте почту для подтверждения."}
-        
-    except ValueError as e:
-        # Если email уже занят
-        raise HTTPException(status_code=400, detail=str(e))
+class TodoUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    due_date: Optional[str] = None
+    completed: Optional[bool] = None
 
-@app.get("/verify")
-def verify_email(token: str):
-    success = db.verify_user(token)
-    if success:
-        return HTMLResponse(content="<h1>✅ Email подтвержден! Теперь вы можете войти.</h1>")
+class TodoResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str]
+    category: str
+    due_date: Optional[str]
+    completed: bool
+    created_at: datetime
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# Helpers
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def authenticate_user(email: str, password: str):
+    user = db.get_user_by_email(email)
+    if not user:
+        return False
+    if not verify_password(password, user['hashed_password']):
+        return False
+    return user
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
     else:
-        return HTMLResponse(content="<h1>❌ Неверная ссылка или срок истек.</h1>")
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except jwt.JWTError:
+        raise credentials_exception
+    user = db.get_user_by_email(email)
+    if user is None:
+        raise credentials_exception
+    return user
+
+# === АДМИН ПАНЕЛЬ ===
+ADMIN_EMAIL = "alex1330@gmail.com"  # ← Твоя почта администратора
+
+def get_current_admin(token: str = Depends(oauth2_scheme)):
+    """Проверяет, что текущий пользователь - Админ"""
+    credentials_exception = HTTPException(status_code=401, detail="Не удалось проверить credentials")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except jwt.JWTError:
+        raise credentials_exception
+        
+    if email != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Доступ запрещен. Только для администратора.")
+    return email
+
+@app.get("/admin/pending-users")
+def get_pending_users(admin_email: str = Depends(get_current_admin)):
+    """Получить список неподтвержденных пользователей (только для админа)"""
+    return db.get_pending_users()
+
+@app.post("/admin/verify/{user_id}")
+def verify_user(user_id: int, admin_email: str = Depends(get_current_admin)):
+    """Подтвердить пользователя (только для админа)"""
+    if db.verify_user_by_id(user_id):
+        return {"message": "Пользователь подтвержден"}
+    raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+# === AUTH ENDPOINTS ===
+@app.post("/auth/register", response_model=UserResponse)
+def register(user: UserCreate):
+    new_user = db.create_user(user.email, user.password)
+    
+    # Отправляем email с подтверждением
+    try:
+        send_verification_email(new_user['email'], new_user.get('verification_token', 'test_token'))
+        print(f"📧 Verification email sent to {new_user['email']}")
+    except Exception as e:
+        print(f"⚠️ Email sending failed: {e}")
+    
+    return {"email": new_user['email'], "is_verified": False}
 
 @app.post("/token", response_model=Token)
 def login(user: UserCreate):
@@ -109,8 +190,8 @@ def login(user: UserCreate):
         raise HTTPException(status_code=401, detail="Неверный email или пароль")
     
     # Проверка: подтвержден ли email
-    #if not db_user.get('is_verified'):
-    #    raise HTTPException(status_code=403, detail="Аккаунт не подтвержден. Проверьте почту.")
+    if not db_user.get('is_verified'):
+        raise HTTPException(status_code=403, detail="Аккаунт не подтвержден администратором.")
     
     access_token = create_access_token(
         data={"sub": db_user['email']},
@@ -118,41 +199,45 @@ def login(user: UserCreate):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-# ================= ЗАДАЧИ (TODOS) =================
+@app.get("/verify")
+def verify_email(token: str):
+    if db.verify_user(token):
+        return {"message": "Email подтвержден! Теперь вы можете войти."}
+    raise HTTPException(status_code=400, detail="Неверный или истекший токен")
 
-@app.post("/todos")
-def create_todo(todo: dict, current_user: dict = Depends(get_current_user)):
-    user_id = current_user['id']
-    return db.create_todo(
-        todo['title'], 
-        todo.get('description', ''), 
-        todo.get('category', 'Общее'), 
-        todo.get('due_date'), 
-        user_id
-    )
-
-@app.get("/todos")
+# === TODO ENDPOINTS ===
+@app.get("/todos", response_model=List[TodoResponse])
 def get_todos(current_user: dict = Depends(get_current_user)):
-    # Возвращаем только задачи текущего пользователя
     return db.get_all_todos(current_user['id'])
 
-@app.put("/todos/{todo_id}")
-def update_todo(todo_id: int, todo: dict, current_user: dict = Depends(get_current_user)):
-    user_id = current_user['id']
-    result = db.update_todo(todo_id, user_id, **todo)
-    if not result:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return result
+@app.post("/todos", response_model=TodoResponse)
+def create_todo(todo: TodoCreate, current_user: dict = Depends(get_current_user)):
+    return db.create_todo(
+        title=todo.title,
+        description=todo.description,
+        category=todo.category,
+        due_date=todo.due_date,
+        user_id=current_user['id']
+    )
+
+@app.put("/todos/{todo_id}", response_model=TodoResponse)
+def update_todo(todo_id: int, todo: TodoUpdate, current_user: dict = Depends(get_current_user)):
+    updated = db.update_todo(todo_id, current_user['id'], **todo.dict(exclude_unset=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    return updated
 
 @app.delete("/todos/{todo_id}")
 def delete_todo(todo_id: int, current_user: dict = Depends(get_current_user)):
-    user_id = current_user['id']
-    success = db.delete_todo(todo_id, user_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return {"message": "Task deleted"}
+    if not db.delete_todo(todo_id, current_user['id']):
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    return {"message": "Задача удалена"}
 
 @app.get("/statistics")
 def get_statistics(current_user: dict = Depends(get_current_user)):
-    user_id = current_user['id']
-    return db.get_statistics(user_id)
+    return db.get_statistics(current_user['id'])
+
+# Root
+@app.get("/")
+def root():
+    return {"message": "Todo Tracker Pro API", "status": "running"}

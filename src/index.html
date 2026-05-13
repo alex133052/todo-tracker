@@ -43,7 +43,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
             background: var(--bg-gradient); 
             min-height: 100vh; 
-            min-height: 100dvh; /* Для мобильных */
+            min-height: 100dvh;
             padding: 1rem; 
             color: var(--text-main);
             -webkit-tap-highlight-color: transparent;
@@ -128,7 +128,7 @@
             border-radius: 12px; 
             background: var(--input-bg); 
             color: var(--text-main);
-            font-size: 16px; /* Предотвращает зум на iOS */
+            font-size: 16px;
         }
         .auth-btn { 
             width: 100%; 
@@ -219,7 +219,7 @@
         }
         .task-item.completed { opacity: 0.6; text-decoration: line-through; border-left-color: #ccc; }
         .task-item.overdue { border-left-color: var(--danger); }
-        .task-content { flex: 1; min-width: 0; } /* min-width: 0 для flex-контейнеров */
+        .task-content { flex: 1; min-width: 0; }
         .task-title { font-weight: 600; margin-bottom: 6px; word-wrap: break-word; }
         .task-meta { font-size: 0.85rem; color: var(--text-sec); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
         .category-badge { background: var(--badge-bg); color: var(--badge-text); padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; }
@@ -253,91 +253,38 @@
         /* === 📱 МОБИЛЬНАЯ АДАПТАЦИЯ === */
         /* ============================ */
         
-        /* Планшеты и маленькие ноутбуки */
         @media (max-width: 768px) {
             body { padding: 0.75rem; }
-            
-            .header { 
-                flex-direction: column; 
-                text-align: center; 
-                gap: 12px;
-            }
+            .header { flex-direction: column; text-align: center; gap: 12px; }
             .header h1 { font-size: 1.3rem; }
-            
-            .stats { 
-                grid-template-columns: repeat(2, 1fr); 
-                gap: 0.75rem; 
-            }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
             .stat-card { padding: 1rem; }
             .stat-value { font-size: 1.5rem; }
-            
-            .form-grid { 
-                grid-template-columns: 1fr; 
-            }
-            
+            .form-grid { grid-template-columns: 1fr; }
             .card { padding: 1.25rem; border-radius: 14px; }
         }
 
-        /* Телефоны */
         @media (max-width: 480px) {
             body { padding: 0.5rem; }
-            
             .header h1 { font-size: 1.1rem; }
-            
-            .stats { 
-                grid-template-columns: repeat(2, 1fr); 
-                gap: 0.5rem; 
-            }
-            .stat-card { 
-                padding: 0.75rem; 
-                border-radius: 10px;
-            }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+            .stat-card { padding: 0.75rem; border-radius: 10px; }
             .stat-value { font-size: 1.3rem; }
             .stat-label { font-size: 0.75rem; }
-            
-            .card { 
-                padding: 1rem; 
-                border-radius: 12px;
-                margin-bottom: 12px;
-            }
-            
-            .auth-container { 
-                margin: 20px 0; 
-                padding: 1.5rem;
-            }
-            
-            .toolbar { 
-                flex-direction: column; 
-                align-items: stretch;
-            }
+            .card { padding: 1rem; border-radius: 12px; margin-bottom: 12px; }
+            .auth-container { margin: 20px 0; padding: 1.5rem; }
+            .toolbar { flex-direction: column; align-items: stretch; }
             .toolbar h3 { margin-bottom: 8px; }
             .csv-btn { width: 100%; }
-            
-            .task-item { 
-                flex-direction: column; 
-                padding: 12px;
-            }
+            .task-item { flex-direction: column; padding: 12px; }
             .task-content { margin-bottom: 10px; }
-            .task-actions { 
-                margin-left: 0; 
-                width: 100%;
-                justify-content: flex-end;
-            }
-            .task-actions button {
-                flex: 1;
-            }
-            
-            /* Увеличиваем поля ввода для удобства */
-            input, select, button {
-                font-size: 16px !important; /* Предотвращает авто-зум на iOS */
-            }
+            .task-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+            .task-actions button { flex: 1; }
+            input, select, button { font-size: 16px !important; }
         }
 
-        /* Маленькие телефоны */
         @media (max-width: 360px) {
-            .stats { 
-                grid-template-columns: 1fr; 
-            }
+            .stats { grid-template-columns: 1fr; }
             .stat-card { padding: 0.75rem; }
         }
     </style>
@@ -396,6 +343,7 @@
         const API = "";
         let isLogin = true;
         let allTodos = [];
+        const ADMIN_EMAIL = "alex1330@gmail.com"; // ← Твоя почта администратора
 
         window.onload = function() {
             const token = localStorage.getItem('token');
@@ -427,6 +375,7 @@
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
             refreshAll();
+            checkAdminUI(); // Показываем админ-кнопку если админ
         }
 
         function toggleAuthMode() {
@@ -449,7 +398,10 @@
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ email, password })
                     });
-                    if (!res.ok) throw new Error('Неверный логин или пароль');
+                    if (!res.ok) {
+                        const error = await res.json();
+                        throw new Error(error.detail || 'Неверный логин или пароль');
+                    }
                     const data = await res.json();
                     localStorage.setItem('token', data.access_token);
                     showApp();
@@ -460,7 +412,7 @@
                         body: JSON.stringify({ email, password })
                     });
                     if (!res.ok) throw new Error('Ошибка регистрации');
-                    alert('Аккаунт создан! Теперь войди.');
+                    alert('Аккаунт создан! Ожидайте подтверждения администратора.');
                     toggleAuthMode();
                 }
             } catch (e) {
@@ -479,6 +431,91 @@
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             };
+        }
+
+        // === АДМИН ПАНЕЛЬ ===
+        function checkAdminUI() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.sub === ADMIN_EMAIL) {
+                    const headerActions = document.querySelector('.header-actions');
+                    // Проверяем, не добавлена ли уже кнопка
+                    if (!document.getElementById('admin-btn')) {
+                        const adminBtn = document.createElement('button');
+                        adminBtn.id = 'admin-btn';
+                        adminBtn.className = 'btn-icon';
+                        adminBtn.innerText = '🛡️';
+                        adminBtn.title = 'Панель администратора';
+                        adminBtn.onclick = openAdminPanel;
+                        headerActions.insertBefore(adminBtn, headerActions.firstChild);
+                    }
+                }
+            } catch (e) {
+                console.error('Error checking admin:', e);
+            }
+        }
+
+        async function openAdminPanel() {
+            try {
+                const res = await fetch(`${API}/admin/pending-users`, { 
+                    headers: await getHeaders() 
+                });
+                if (!res.ok) throw new Error('Ошибка доступа');
+                const users = await res.json();
+                
+                let html = '<h3 style="margin-bottom:15px;">👥 Ожидают подтверждения</h3>';
+                if (users.length === 0) {
+                    html += '<p style="color:var(--text-sec);">Нет новых пользователей.</p>';
+                } else {
+                    html += '<div style="max-height:400px; overflow-y:auto;">';
+                    users.forEach(u => {
+                        html += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:var(--hover-bg); margin-bottom:8px; border-radius:10px;">
+                            <div>
+                                <div style="font-weight:600; margin-bottom:4px;">${u.email}</div>
+                                <div style="font-size:0.75rem; color:var(--text-sec);">${new Date(u.created_at).toLocaleString('ru-RU')}</div>
+                            </div>
+                            <button class="btn-done" onclick="verifyUser(${u.id})" style="min-width:100px;">✅ Подтвердить</button>
+                        </div>`;
+                    });
+                    html += '</div>';
+                }
+                
+                showAdminModal(html);
+                
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        function showAdminModal(content) {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; display:flex; justify-content:center; align-items:center;';
+            overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = 'background:var(--card-bg); padding:25px; border-radius:16px; max-width:500px; width:90%; color:var(--text-main); max-height:80vh; overflow-y:auto;';
+            modal.innerHTML = content + '<br><button class="csv-btn" onclick="this.closest(\'div\').closest(\'div\').remove()" style="margin-top:15px; width:100%; min-height:44px;">Закрыть</button>';
+            
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+        }
+
+        async function verifyUser(userId) {
+            if (!confirm('Подтвердить этого пользователя?')) return;
+            try {
+                await fetch(`${API}/admin/verify/${userId}`, { 
+                    method: 'POST', 
+                    headers: await getHeaders() 
+                });
+                openAdminPanel(); // Обновить список
+                alert('Пользователь подтвержден!');
+            } catch (e) {
+                alert('Ошибка подтверждения: ' + e.message);
+            }
         }
 
         async function loadStats() {

@@ -87,7 +87,7 @@ class TodoDatabase:
         with conn.cursor() as cur:
             try:
                 cur.execute(
-                    "INSERT INTO users (email, hashed_password, verification_token) VALUES (%s, %s, %s) RETURNING id, email",
+                    "INSERT INTO users (email, hashed_password, verification_token, is_verified) VALUES (%s, %s, %s, FALSE) RETURNING id, email",
                     (email, hashed_pw, token)
                 )
                 conn.commit()
@@ -241,3 +241,18 @@ class TodoDatabase:
                 })
                 
         return report
+
+    def get_pending_users(self):
+        """Возвращает список пользователей, ожидающих подтверждения"""
+        conn = self._get_connection()
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, email, created_at FROM users WHERE is_verified = FALSE")
+            return [dict(row) for row in cur.fetchall()]
+
+    def verify_user_by_id(self, user_id: int):
+        """Подтверждает пользователя по ID"""
+        conn = self._get_connection()
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET is_verified = TRUE WHERE id = %s", (user_id,))
+            conn.commit()
+            return cur.rowcount > 0
