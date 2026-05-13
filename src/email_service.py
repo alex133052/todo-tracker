@@ -14,7 +14,7 @@ def send_email(to_email: str, subject: str, html_content: str):
     try:
         params = {
             "from": "onboarding@resend.dev",  # Стандартный адрес для Sandbox
-            "to": TEST_EMAIL,  # В Sandbox отправляем только себе
+            "to": to_email,  # ИЗМЕНЕНИЕ ЗДЕСЬ: отправляем тому, кто просил (to_email), а не себе
             "subject": subject,
             "html": html_content
         }
