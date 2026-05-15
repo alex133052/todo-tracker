@@ -363,7 +363,7 @@
         </div>
     </div>
 
-    <script>
+    
     let token = localStorage.getItem('token');
     let isRegistering = false;
     let editingTodoId = null;
@@ -388,7 +388,7 @@
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
 
-        try {
+        try {<script>
             if (isRegistering) {
                 await fetch('/auth/register', {
                     method: 'POST',
