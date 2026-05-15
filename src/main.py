@@ -89,7 +89,7 @@ class Token(BaseModel):
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     # ⚠️ ИСПРАВЛЕНИЕ: Обрезаем пароль ДО проверки (bcrypt ограничение 72 байта)
-    if len(plain_password) > 72:
+    if len(plain_password) > 75:
         plain_password = plain_password[:72]
     return pwd_context.verify(plain_password, hashed_password)
 
