@@ -27,7 +27,8 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
 db = TodoDatabase()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# ✅ ИСПРАВЛЕНО: Используем pbkdf2_sha256 (нет ограничения 72 байта)
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 scheduler = BackgroundScheduler()
 
@@ -88,18 +89,18 @@ class Token(BaseModel):
     token_type: str
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    # ⚠️ ИСПРАВЛЕНИЕ: Обрезаем пароль ДО проверки (18 символов = 72 байта max для UTF-8)
-    if len(plain_password) > 18:
-        plain_password = plain_password[:18]
+    # ✅ ИСПРАВЛЕНО: Обрезаем пароль до 100 символов
+    if len(plain_password) > 100:
+        plain_password = plain_password[:100]
     return pwd_context.verify(plain_password, hashed_password)
 
 def authenticate_user(email: str, password: str):
     user = db.get_user_by_email(email)
     if not user:
         return False
-    # ⚠️ ИСПРАВЛЕНИЕ: Обрезаем пароль при входе (18 символов = 72 байта max)
-    if len(password) > 18:
-        password = password[:18]
+    # ✅ ИСПРАВЛЕНО: Обрезаем пароль при входе до 100 символов
+    if len(password) > 100:
+        password = password[:100]
     if not verify_password(password, user['hashed_password']):
         return False
     return user
@@ -160,8 +161,8 @@ def verify_user(user_id: int, admin_email: str = Depends(get_current_admin)):
 
 @app.post("/auth/register", response_model=UserResponse)
 def register(user: UserCreate):
-    # ⚠️ ИСПРАВЛЕНИЕ: Обрезаем пароль до 18 символов (72 байта max)
-    password = user.password[:18] if len(user.password) > 18 else user.password
+    # ✅ ИСПРАВЛЕНО: Обрезаем пароль до 100 символов
+    password = user.password[:100] if len(user.password) > 100 else user.password
     
     new_user = db.create_user(user.email, password)
     
