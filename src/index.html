@@ -303,6 +303,13 @@
         </div>
     </div>
 
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+    <button class="btn btn-primary" onclick="openModal()">+ Новая задача</button>
+    
+    <!-- ✅ КНОПКА ЭКСПОРТА -->
+    <button class="btn btn-success" onclick="exportToCSV()">📥 Скачать CSV</button>
+</div>
+
     <!-- Модальное окно создания/редактирования -->
     <div id="task-modal" class="modal">
         <div class="modal-content">
@@ -399,6 +406,7 @@
                     const data = await res.json();
                     token = data.access_token;
                     localStorage.setItem('token', token);
+                    localStorage.setItem('email', email);
                     showMainSection();
                 } else {
                     const error = await res.json();

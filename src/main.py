@@ -1,3 +1,6 @@
+import csv
+import io
+from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
@@ -193,6 +196,41 @@ def delete_todo(todo_id: int, current_user: dict = Depends(get_current_user)):
 @app.get("/statistics")
 def get_statistics(current_user: dict = Depends(get_current_user)):
     return db.get_statistics(current_user['id'])
+
+@app.get("/todos/export/csv")
+def export_todos_csv(current_user: dict = Depends(get_current_user)):
+    # Получаем задачи
+    todos = db.get_all_todos(current_user['id'])
+    
+    # Создаем CSV файл в памяти
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';') # Используем ; для Excel
+    
+    # Заголовки
+    writer.writerow(["ID", "Задача", "Описание", "Категория", "Приоритет", "Теги", "Срок", "Статус"])
+    
+    # Данные
+    for todo in todos:
+        status = "Выполнено" if todo['completed'] else "В процессе"
+        writer.writerow([
+            todo['id'],
+            todo['title'],
+            todo['description'] or "",
+            todo['category'],
+            todo['priority'],
+            todo['tags'] or "",
+            todo['due_date'],
+            status
+        ])
+    
+    # Отдаем файл
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=todos.csv"}
+    )
+
 
 @app.get("/")
 async def root_page():
