@@ -4,7 +4,7 @@ from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from passlib.context import CryptContext
 
-# Используем pbkdf2_sha256 (нет ограничения 72 байта)
+# Используем pbkdf2_sha256
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 class TodoDatabase:
@@ -25,6 +25,7 @@ class TodoDatabase:
     def init_db(self):
         conn = self._get_connection()
         with conn.cursor() as cur:
+            # ... (код создания пользователей тот же) ...
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
@@ -35,29 +36,21 @@ class TodoDatabase:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
-            cur.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name='users' AND column_name='is_verified'
-            """)
-            if not cur.fetchone():
-                cur.execute("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE")
-            
-            cur.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name='users' AND column_name='verification_token'
-            """)
-            if not cur.fetchone():
-                cur.execute("ALTER TABLE users ADD COLUMN verification_token TEXT")
-            
+            # ... (проверка столбцов пользователей та же) ...
+            cur.execute("""SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='is_verified'""")
+            if not cur.fetchone(): cur.execute("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE")
+            cur.execute("""SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='verification_token'""")
+            if not cur.fetchone(): cur.execute("ALTER TABLE users ADD COLUMN verification_token TEXT")
+
+            # ✅ СОЗДАНИЕ ТАБЛИЦЫ ЗАДАЧ С НОВЫМИ ПОЛЯМИ
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS todos (
                     id SERIAL PRIMARY KEY,
                     title TEXT NOT NULL,
                     description TEXT,
                     category TEXT DEFAULT 'Общее',
+                    priority TEXT DEFAULT 'medium', 
+                    tags TEXT DEFAULT '', 
                     due_date DATE,
                     completed BOOLEAN DEFAULT FALSE,
                     user_id INT REFERENCES users(id) ON DELETE CASCADE,
@@ -65,28 +58,27 @@ class TodoDatabase:
                 )
             """)
             
-            cur.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name='todos' AND column_name='user_id'
-            """)
-            if not cur.fetchone():
-                cur.execute("ALTER TABLE todos ADD COLUMN user_id INT")
+            # ✅ Добавляем новые поля, если их нет
+            cur.execute("""SELECT column_name FROM information_schema.columns WHERE table_name='todos' AND column_name='priority'""")
+            if not cur.fetchone(): cur.execute("ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'medium'")
+            
+            cur.execute("""SELECT column_name FROM information_schema.columns WHERE table_name='todos' AND column_name='tags'""")
+            if not cur.fetchone(): cur.execute("ALTER TABLE todos ADD COLUMN tags TEXT DEFAULT ''")
+            
+            cur.execute("""SELECT column_name FROM information_schema.columns WHERE table_name='todos' AND column_name='user_id'""")
+            if not cur.fetchone(): cur.execute("ALTER TABLE todos ADD COLUMN user_id INT")
             
             conn.commit()
 
     def create_user(self, email: str, password: str) -> dict:
         conn = self._get_connection()
-        # Обрезаем пароль до 100 символов
-        if len(password) > 100:
-            password = password[:100]
+        if len(password) > 100: password = password[:100]
         hashed_pw = pwd_context.hash(password)
         import secrets
         token = secrets.token_urlsafe(32)
         
         with conn.cursor() as cur:
             try:
-                # ✅ ИСПРАВЛЕНО: Возвращаем verification_token
                 cur.execute(
                     "INSERT INTO users (email, hashed_password, verification_token, is_verified) VALUES (%s, %s, %s, FALSE) RETURNING id, email, verification_token",
                     (email, hashed_pw, token)
@@ -100,61 +92,58 @@ class TodoDatabase:
     def verify_user(self, token: str) -> bool:
         conn = self._get_connection()
         with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = %s",
-                (token,)
-            )
+            cur.execute("UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = %s", (token,))
             conn.commit()
             return cur.rowcount > 0
 
     def get_user_by_email(self, email: str):
         conn = self._get_connection()
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id, email, hashed_password, is_verified FROM users WHERE email = %s",
-                (email,)
-            )
+            cur.execute("SELECT id, email, hashed_password, is_verified FROM users WHERE email = %s", (email,))
             user = cur.fetchone()
             return dict(user) if user else None
 
-    def create_todo(self, title: str, description: str, category: str, due_date, user_id: int) -> dict:
+    # ✅ ОБНОВЛЕННЫЙ МЕТОД СОЗДАНИЯ ЗАДАЧИ
+    def create_todo(self, title: str, description: str, category: str, priority: str, tags: str, due_date, user_id: int) -> dict:
         conn = self._get_connection()
         with conn.cursor() as cur:
             cur.execute(
-                """INSERT INTO todos (title, description, category, due_date, user_id) 
-                   VALUES (%s, %s, %s, %s, %s) 
-                   RETURNING id, title, description, category, due_date, completed, created_at""",
-                (title, description, category, due_date if due_date else None, user_id)
+                """INSERT INTO todos (title, description, category, priority, tags, due_date, user_id) 
+                   VALUES (%s, %s, %s, %s, %s, %s, %s) 
+                   RETURNING id, title, description, category, priority, tags, due_date, completed, created_at""",
+                (title, description, category, priority, tags, due_date if due_date else None, user_id)
             )
             conn.commit()
             return dict(cur.fetchone())
 
+    # ✅ ОБНОВЛЕННЫЙ МЕТОД ПОЛУЧЕНИЯ ЗАДАЧ
     def get_all_todos(self, user_id: int) -> list:
         conn = self._get_connection()
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, title, description, category, due_date, completed, created_at 
+                SELECT id, title, description, category, priority, tags, due_date, completed, created_at 
                 FROM todos 
                 WHERE user_id = %s
                 ORDER BY 
-                    CASE WHEN completed THEN 1 ELSE 0 END,
+                    CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END,
                     due_date ASC NULLS LAST,
                     created_at DESC
             """, (user_id,))
             return [dict(row) for row in cur.fetchall()]
 
+    # ✅ ОБНОВЛЕННЫЙ МЕТОД ОБНОВЛЕНИЯ
     def update_todo(self, todo_id: int, user_id: int, **kwargs) -> dict:
         conn = self._get_connection()
         updates = []
         values = []
         
+        # Разрешаем обновлять priority и tags
         for key, value in kwargs.items():
-            if key in ['title', 'description', 'category', 'due_date', 'completed']:
+            if key in ['title', 'description', 'category', 'priority', 'tags', 'due_date', 'completed']:
                 updates.append(f"{key} = %s")
                 values.append(value)
         
-        if not updates:
-            return None
+        if not updates: return None
         
         values.append(todo_id)
         values.append(user_id)
@@ -163,7 +152,7 @@ class TodoDatabase:
             cur.execute(
                 f"""UPDATE todos SET {', '.join(updates)} 
                     WHERE id = %s AND user_id = %s 
-                    RETURNING id, title, description, category, due_date, completed, created_at""",
+                    RETURNING id, title, description, category, priority, tags, due_date, completed, created_at""",
                 values
             )
             conn.commit()
@@ -173,10 +162,7 @@ class TodoDatabase:
     def delete_todo(self, todo_id: int, user_id: int) -> bool:
         conn = self._get_connection()
         with conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM todos WHERE id = %s AND user_id = %s",
-                (todo_id, user_id)
-            )
+            cur.execute("DELETE FROM todos WHERE id = %s AND user_id = %s", (todo_id, user_id))
             conn.commit()
             return cur.rowcount > 0
 
@@ -185,51 +171,24 @@ class TodoDatabase:
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM todos WHERE user_id = %s", (user_id,))
             total = cur.fetchone()['count']
-            
             cur.execute("SELECT COUNT(*) FROM todos WHERE user_id = %s AND completed = TRUE", (user_id,))
             completed = cur.fetchone()['count']
-            
             pending = total - completed
-            
-            cur.execute("""
-                SELECT COUNT(*) FROM todos 
-                WHERE user_id = %s AND completed = FALSE AND due_date < CURRENT_DATE
-            """, (user_id,))
+            cur.execute("SELECT COUNT(*) FROM todos WHERE user_id = %s AND completed = FALSE AND due_date < CURRENT_DATE", (user_id,))
             overdue = cur.fetchone()['count']
-            
             completion_rate = round((completed / total * 100) if total > 0 else 0)
-            
-            return {
-                "total": total,
-                "completed": completed,
-                "pending": pending,
-                "overdue": overdue,
-                "completion_rate": completion_rate
-            }
+            return {"total": total, "completed": completed, "pending": pending, "overdue": overdue, "completion_rate": completion_rate}
 
     def get_overdue_report(self):
         conn = self._get_connection()
         report = {}
-        
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT u.email, t.title, t.due_date 
-                FROM todos t
-                JOIN users u ON t.user_id = u.id
-                WHERE t.completed = FALSE 
-                AND t.due_date < CURRENT_DATE
-            """)
+            cur.execute("SELECT u.email, t.title, t.due_date FROM todos t JOIN users u ON t.user_id = u.id WHERE t.completed = FALSE AND t.due_date < CURRENT_DATE")
             rows = cur.fetchall()
-            
             for row in rows:
                 email = row['email']
-                if email not in report:
-                    report[email] = []
-                report[email].append({
-                    'title': row['title'],
-                    'due_date': str(row['due_date'])
-                })
-                
+                if email not in report: report[email] = []
+                report[email].append({'title': row['title'], 'due_date': str(row['due_date'])})
         return report
 
     def get_pending_users(self):

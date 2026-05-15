@@ -2,671 +2,609 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Todo Tracker Pro</title>
     <style>
-        /* === ПЕРЕМЕННЫЕ (СВЕТЛАЯ ТЕМА ПО УМОЛЧАНИЮ) === */
-        :root {
-            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --card-bg: #ffffff;
-            --text-main: #333333;
-            --text-sec: #666666;
-            --input-bg: #ffffff;
-            --input-border: #dddddd;
-            --badge-bg: #667eea;
-            --badge-text: #ffffff;
-            --shadow: 0 4px 6px rgba(0,0,0,0.1);
-            --hover-bg: #f5f5f5;
-            --danger: #f44336;
-            --success: #4caf50;
-            --warning: #ff9800;
-            --primary: #667eea;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        /* === ТЁМНАЯ ТЕМА === */
-        .dark-theme {
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            --card-bg: #1e293b;
-            --text-main: #f1f5f9;
-            --text-sec: #94a3b8;
-            --input-bg: #334155;
-            --input-border: #475569;
-            --badge-bg: #3b82f6;
-            --badge-text: #ffffff;
-            --shadow: 0 4px 6px rgba(0,0,0,0.5);
-            --hover-bg: #334155;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; transition: background-color 0.3s, color 0.3s; }
-        
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            background: var(--bg-gradient); 
-            min-height: 100vh; 
-            min-height: 100dvh;
-            padding: 1rem; 
-            color: var(--text-main);
-            -webkit-tap-highlight-color: transparent;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
         }
-        
-        .container { max-width: 900px; margin: 0 auto; }
-        
-        /* Header */
-        .header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            color: white; 
-            margin-bottom: 20px; 
-            flex-wrap: wrap;
-            gap: 10px;
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .header h1 { font-size: 1.5rem; }
-        .header-actions { display: flex; gap: 10px; align-items: center; }
-        .btn-icon { 
-            background: rgba(255,255,255,0.2); 
-            border: none; 
-            padding: 10px 14px; 
-            color: white; 
-            border-radius: 12px; 
-            cursor: pointer; 
-            font-size: 1.2rem;
-            min-width: 44px;
-            min-height: 44px;
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
         }
-        .btn-icon:hover { background: rgba(255,255,255,0.4); }
-        .logout-btn { 
-            background: rgba(255,255,255,0.2); 
-            border: none; 
-            padding: 10px 15px; 
-            color: white; 
-            border-radius: 12px; 
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            color: #666;
+        }
+
+        .main-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
             cursor: pointer;
-            min-width: 44px;
-            min-height: 44px;
+            font-size: 1rem;
+            transition: all 0.3s;
         }
-        
-        /* Stats */
-        .stats { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
-            gap: 1rem; 
-            margin-bottom: 2rem; 
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
         }
-        .stat-card { 
-            background: var(--card-bg); 
-            color: var(--text-main); 
-            padding: 1.5rem; 
-            border-radius: 12px; 
-            box-shadow: var(--shadow); 
-            text-align: center; 
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
         }
-        .stat-value { 
-            font-size: 2rem; 
-            font-weight: bold; 
-            color: var(--primary); 
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
         }
-        .dark-theme .stat-value { color: #60a5fa; }
-        .stat-label { color: var(--text-sec); margin-top: 0.5rem; font-size: 0.85rem; }
-        
-        /* Auth */
-        .auth-container { 
-            background: var(--card-bg); 
-            padding: 2rem; 
-            border-radius: 16px; 
-            box-shadow: var(--shadow); 
-            max-width: 400px; 
-            margin: 50px auto; 
-            text-align: center; 
-            color: var(--text-main); 
+
+        .btn-success {
+            background: #2ecc71;
+            color: white;
         }
-        .auth-input { 
-            width: 100%; 
-            padding: 12px; 
-            margin: 10px 0; 
-            border: 2px solid var(--input-border); 
-            border-radius: 12px; 
-            background: var(--input-bg); 
-            color: var(--text-main);
-            font-size: 16px;
-        }
-        .auth-btn { 
-            width: 100%; 
-            padding: 14px; 
-            background: var(--primary); 
-            color: white; 
-            border: none; 
-            border-radius: 12px; 
-            cursor: pointer; 
-            font-size: 1rem; 
-            margin-top: 10px;
-            min-height: 48px;
-        }
-        .auth-switch { margin-top: 15px; font-size: 0.9rem; color: var(--text-sec); cursor: pointer; text-decoration: underline; }
-        
-        /* Cards */
-        .card { 
-            background: var(--card-bg); 
-            padding: 1.5rem; 
-            border-radius: 16px; 
-            box-shadow: var(--shadow); 
-            margin-bottom: 20px; 
-            color: var(--text-main); 
-        }
-        .form-grid { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 12px; 
-        }
-        .form-grid input, .form-grid select { 
-            padding: 12px; 
-            border: 2px solid var(--input-border); 
-            border-radius: 12px; 
-            background: var(--input-bg); 
-            color: var(--text-main);
-            font-size: 16px;
-            min-height: 44px;
-        }
-        .add-btn { 
-            grid-column: 1 / -1; 
-            background: var(--success); 
-            color: white; 
-            border: none; 
-            padding: 14px; 
-            border-radius: 12px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            margin-top: 10px;
-            min-height: 48px;
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
             font-size: 1rem;
         }
-        .add-btn:hover { opacity: 0.9; }
-        
-        /* Toolbar */
-        .toolbar { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 12px; 
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .csv-btn { 
-            background: var(--warning); 
-            color: white; 
-            border: none; 
-            padding: 10px 15px; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            font-size: 0.9rem;
-            min-height: 44px;
-        }
-        .csv-btn:hover { opacity: 0.9; }
 
-        /* Tasks */
-        .task-list { list-style: none; padding: 0; margin-top: 1rem; }
-        .task-item { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: flex-start;
-            padding: 16px; 
-            background: var(--hover-bg); 
-            margin-bottom: 10px; 
-            border-radius: 12px; 
-            border-left: 4px solid var(--primary); 
-            color: var(--text-main); 
+        .form-group {
+            margin-bottom: 15px;
         }
-        .task-item.completed { opacity: 0.6; text-decoration: line-through; border-left-color: #ccc; }
-        .task-item.overdue { border-left-color: var(--danger); }
-        .task-content { flex: 1; min-width: 0; }
-        .task-title { font-weight: 600; margin-bottom: 6px; word-wrap: break-word; }
-        .task-meta { font-size: 0.85rem; color: var(--text-sec); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-        .category-badge { background: var(--badge-bg); color: var(--badge-text); padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; }
-        .due-date { color: var(--danger); font-weight: 600; }
-        .task-actions { 
-            display: flex; 
-            gap: 8px; 
-            margin-left: 10px; 
-            flex-shrink: 0;
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
         }
-        .task-actions button { 
-            padding: 8px 12px; 
-            border: none; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            color: white;
-            font-size: 1.1rem;
-            min-width: 44px;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
             justify-content: center;
+            align-items: center;
         }
-        .btn-done { background: var(--success); }
-        .btn-del { background: var(--danger); }
-        .empty-state { text-align: center; padding: 2rem; color: var(--text-sec); }
-        
-        .hidden { display: none !important; }
 
-        /* ============================ */
-        /* === 📱 МОБИЛЬНАЯ АДАПТАЦИЯ === */
-        /* ============================ */
-        
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .todo-list {
+            margin-top: 20px;
+        }
+
+        .todo-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s;
+        }
+
+        .todo-card:hover {
+            transform: translateX(5px);
+        }
+
+        /* ✅ СТИЛИ ДЛЯ ПРИОРИТЕТОВ */
+        .priority-high { border-left-color: #e74c3c; background: #fff5f5; }
+        .priority-medium { border-left-color: #f39c12; background: #fffaf0; }
+        .priority-low { border-left-color: #2ecc71; background: #f0fff4; }
+
+        .todo-card h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .todo-card p {
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+
+        .todo-meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        /* ✅ СТИЛИ ДЛЯ БЕЙДЖЕЙ */
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: white;
+            display: inline-block;
+        }
+
+        .badge-high { background: #e74c3c; }
+        .badge-medium { background: #f39c12; }
+        .badge-low { background: #2ecc71; }
+
+        .category-badge {
+            background: #3498db;
+        }
+
+        .tag-badge {
+            background: #95a5a6;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: white;
+        }
+
+        .todo-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+        }
+
+        .completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+
+        .auth-form {
+            max-width: 400px;
+            margin: 50px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .hidden {
+            display: none;
+        }
+
         @media (max-width: 768px) {
-            body { padding: 0.75rem; }
-            .header { flex-direction: column; text-align: center; gap: 12px; }
-            .header h1 { font-size: 1.3rem; }
-            .stats { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
-            .stat-card { padding: 1rem; }
-            .stat-value { font-size: 1.5rem; }
-            .form-grid { grid-template-columns: 1fr; }
-            .card { padding: 1.25rem; border-radius: 14px; }
-        }
-
-        @media (max-width: 480px) {
-            body { padding: 0.5rem; }
-            .header h1 { font-size: 1.1rem; }
-            .stats { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
-            .stat-card { padding: 0.75rem; border-radius: 10px; }
-            .stat-value { font-size: 1.3rem; }
-            .stat-label { font-size: 0.75rem; }
-            .card { padding: 1rem; border-radius: 12px; margin-bottom: 12px; }
-            .auth-container { margin: 20px 0; padding: 1.5rem; }
-            .toolbar { flex-direction: column; align-items: stretch; }
-            .toolbar h3 { margin-bottom: 8px; }
-            .csv-btn { width: 100%; }
-            .task-item { flex-direction: column; padding: 12px; }
-            .task-content { margin-bottom: 10px; }
-            .task-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
-            .task-actions button { flex: 1; }
-            input, select, button { font-size: 16px !important; }
-        }
-
-        @media (max-width: 360px) {
-            .stats { grid-template-columns: 1fr; }
-            .stat-card { padding: 0.75rem; }
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        
-        <!-- AUTH SCREEN -->
-        <div id="auth-screen" class="auth-container hidden">
+        <!-- Авторизация -->
+        <div id="auth-section" class="auth-form">
             <h2 id="auth-title">Вход</h2>
-            <input type="email" id="email" class="auth-input" placeholder="Email" autocomplete="email">
-            <div style="position: relative;">
-                <input type="password" id="password" class="auth-input" placeholder="Пароль" autocomplete="current-password" style="padding-right: 50px;">
-                <button type="button" onclick="togglePassword()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 5px; color: var(--text-sec);">👁️</button>
-            </div>
-            <button class="auth-btn" onclick="handleAuth()" id="auth-action-btn">Войти</button>
-            <div class="auth-switch" onclick="toggleAuthMode()" id="auth-switch-text">Нет аккаунта? Зарегистрироваться</div>
-            <p id="auth-error" style="color: var(--danger); margin-top: 10px; display: none;"></p>
+            <form id="auth-form">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="email" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="password" class="form-input" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%">Войти</button>
+            </form>
+            <p style="text-align: center; margin-top: 15px;">
+                <a href="#" id="toggle-auth">Нет аккаунта? Зарегистрироваться</a>
+            </p>
         </div>
 
-        <!-- APP SCREEN -->
-        <div id="app-screen" class="hidden">
-            <div class="header">
+        <!-- Основной контент -->
+        <div id="main-section" class="hidden">
+            <header>
                 <h1>📋 Todo Tracker Pro</h1>
-                <div class="header-actions">
-                    <button class="btn-icon" id="theme-toggle" onclick="toggleTheme()" title="Тёмная тема">🌙</button>
-                    <button class="logout-btn" onclick="logout()">Выйти</button>
+                <div>
+                    <span id="user-email" style="margin-right: 15px;"></span>
+                    <button class="btn btn-danger" onclick="logout()">Выйти</button>
+                </div>
+            </header>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <h3 id="stat-total">0</h3>
+                    <p>Всего задач</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-completed">0</h3>
+                    <p>Выполнено</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-pending">0</h3>
+                    <p>В процессе</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-overdue">0</h3>
+                    <p>Просрочено</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-rate">0%</h3>
+                    <p>Успешность</p>
                 </div>
             </div>
 
-            <!-- Statistics -->
-            <div class="stats" id="stats"></div>
-
-            <!-- Add Task Form -->
-            <div class="card">
-                <h3 style="margin-bottom: 1rem;">➕ Новая задача</h3>
-                <div class="form-grid">
-                    <input type="text" id="task-title" placeholder="Название задачи *" autocomplete="off" style="grid-column: 1 / -1;">
-                    <input type="text" id="task-category" placeholder="Категория" value="Общее">
-                    <input type="text" id="task-desc" placeholder="Описание">
-                    <input type="date" id="task-date">
-                    <button class="add-btn" onclick="addTodo()">Добавить задачу</button>
-                </div>
-            </div>
-
-            <!-- Task List -->
-            <div class="card">
-                <div class="toolbar">
-                    <h3 style="margin: 0;">📝 Мои задачи</h3>
-                    <button class="csv-btn" onclick="exportToCSV()">📥 Скачать CSV</button>
-                </div>
-                <ul id="task-list" class="task-list"></ul>
+            <div class="main-content">
+                <button class="btn btn-primary" onclick="openModal()">+ Новая задача</button>
+                <div id="todo-list" class="todo-list"></div>
             </div>
         </div>
+    </div>
 
+    <!-- Модальное окно создания/редактирования -->
+    <div id="task-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Новая задача</h2>
+            <form id="task-form">
+                <div class="form-group">
+                    <label>Название задачи *</label>
+                    <input type="text" id="task-title" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="task-description" class="form-input" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Категория</label>
+                    <select id="task-category" class="form-select">
+                        <option value="Общее">Общее</option>
+                        <option value="Работа">Работа</option>
+                        <option value="Личное">Личное</option>
+                        <option value="Покупки">Покупки</option>
+                        <option value="Здоровье">Здоровье</option>
+                    </select>
+                </div>
+                
+                <!-- ✅ ПОЛЕ ПРИОРИТЕТА -->
+                <div class="form-group">
+                    <label>Приоритет</label>
+                    <select id="task-priority" class="form-select">
+                        <option value="low">✅ Низкий</option>
+                        <option value="medium" selected>⚠️ Средний</option>
+                        <option value="high">🔥 Высокий</option>
+                    </select>
+                </div>
+
+                <!-- ✅ ПОЛЕ ТЕГОВ -->
+                <div class="form-group">
+                    <label>Теги (через запятую)</label>
+                    <input type="text" id="task-tags" class="form-input" placeholder="срочно, важно, дом">
+                </div>
+
+                <div class="form-group">
+                    <label>Срок выполнения</label>
+                    <input type="date" id="task-due-date" class="form-input">
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1">Сохранить</button>
+                    <button type="button" class="btn btn-danger" onclick="closeModal()" style="flex: 1">Отмена</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
-        const API = "";
-        let isLogin = true;
-        let allTodos = [];
-        const ADMIN_EMAIL = "alex1330@gmail.com";
+        let token = localStorage.getItem('token');
+        let isRegistering = false;
+        let editingTodoId = null;
 
-        window.onload = function() {
-            const token = localStorage.getItem('token');
-            if (localStorage.getItem('theme') === 'dark') {
-                document.body.classList.add('dark-theme');
-                document.getElementById('theme-toggle').innerText = '☀️';
-            }
-            
-            if (token) {
-                showApp();
-            } else {
-                showAuth();
-            }
-        };
-
-        function toggleTheme() {
-            document.body.classList.toggle('dark-theme');
-            const isDark = document.body.classList.contains('dark-theme');
-            document.getElementById('theme-toggle').innerText = isDark ? '☀️' : '🌙';
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        // Проверка авторизации
+        if (token) {
+            showMainSection();
         }
 
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const type = passwordInput.getAttribute('type');
-            if (type === 'password') {
-                passwordInput.setAttribute('type', 'text');
-            } else {
-                passwordInput.setAttribute('type', 'password');
-            }
-        }
+        // Переключение вход/регистрация
+        document.getElementById('toggle-auth').addEventListener('click', (e) => {
+            e.preventDefault();
+            isRegistering = !isRegistering;
+            document.getElementById('auth-title').textContent = isRegistering ? 'Регистрация' : 'Вход';
+            e.target.textContent = isRegistering ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться';
+        });
 
-        function showAuth() {
-            document.getElementById('auth-screen').classList.remove('hidden');
-            document.getElementById('app-screen').classList.add('hidden');
-        }
-
-        function showApp() {
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('app-screen').classList.remove('hidden');
-            refreshAll();
-            checkAdminUI();
-        }
-
-        function toggleAuthMode() {
-            isLogin = !isLogin;
-            document.getElementById('auth-title').innerText = isLogin ? "Вход" : "Регистрация";
-            document.getElementById('auth-action-btn').innerText = isLogin ? "Войти" : "Создать аккаунт";
-            document.getElementById('auth-switch-text').innerText = isLogin ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти";
-            document.getElementById('auth-error').style.display = 'none';
-        }
-
-        async function handleAuth() {
+        // Обработка формы авторизации
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const errorEl = document.getElementById('auth-error');
-            
+
             try {
-                if (isLogin) {
-                    const res = await fetch(`${API}/token`, {
+                if (isRegistering) {
+                    await fetch('/auth/register', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email, password })
                     });
-                    if (!res.ok) {
-                        const error = await res.json();
-                        throw new Error(error.detail || 'Неверный логин или пароль');
-                    }
-                    const data = await res.json();
-                    localStorage.setItem('token', data.access_token);
-                    showApp();
+                    alert('Регистрация успешна! Проверьте email для подтверждения.');
                 } else {
-                    const res = await fetch(`${API}/auth/register`, {
+                    const res = await fetch('/token', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email, password })
                     });
-                    if (!res.ok) throw new Error('Ошибка регистрации');
-                    alert('Аккаунт создан! Ожидайте подтверждения администратора.');
-                    toggleAuthMode();
+                    if (res.ok) {
+                        const data = await res.json();
+                        token = data.access_token;
+                        localStorage.setItem('token', token);
+                        showMainSection();
+                    } else {
+                        alert('Ошибка входа');
+                    }
                 }
-            } catch (e) {
-                errorEl.innerText = e.message;
-                errorEl.style.display = 'block';
+            } catch (err) {
+                alert('Ошибка: ' + err.message);
             }
+        });
+
+        function showMainSection() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('main-section').classList.remove('hidden');
+            document.getElementById('user-email').textContent = localStorage.getItem('email') || 'User';
+            loadTodos();
+            loadStatistics();
         }
 
         function logout() {
             localStorage.removeItem('token');
+            token = null;
             location.reload();
         }
 
-        async function getHeaders() {
-            return {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            };
-        }
-
-        // === АДМИН ПАНЕЛЬ ===
-        function checkAdminUI() {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                if (payload.sub === ADMIN_EMAIL) {
-                    const headerActions = document.querySelector('.header-actions');
-                    if (!document.getElementById('admin-btn')) {
-                        const adminBtn = document.createElement('button');
-                        adminBtn.id = 'admin-btn';
-                        adminBtn.className = 'btn-icon';
-                        adminBtn.innerText = '🛡️';
-                        adminBtn.title = 'Панель администратора';
-                        adminBtn.onclick = openAdminPanel;
-                        headerActions.insertBefore(adminBtn, headerActions.firstChild);
-                    }
-                }
-            } catch (e) {
-                console.error('Error checking admin:', e);
-            }
-        }
-
-        async function openAdminPanel() {
-            try {
-                const res = await fetch(`${API}/admin/pending-users`, { 
-                    headers: await getHeaders() 
-                });
-                if (!res.ok) throw new Error('Ошибка доступа');
-                const users = await res.json();
-                
-                let html = '<h3 style="margin-bottom:15px;">👥 Ожидают подтверждения</h3>';
-                if (users.length === 0) {
-                    html += '<p style="color:var(--text-sec);">Нет новых пользователей.</p>';
-                } else {
-                    html += '<div style="max-height:400px; overflow-y:auto;">';
-                    users.forEach(u => {
-                        html += `
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:var(--hover-bg); margin-bottom:8px; border-radius:10px;">
-                            <div>
-                                <div style="font-weight:600; margin-bottom:4px;">${u.email}</div>
-                                <div style="font-size:0.75rem; color:var(--text-sec);">${new Date(u.created_at).toLocaleString('ru-RU')}</div>
-                            </div>
-                            <button class="btn-done" onclick="verifyUser(${u.id})" style="min-width:100px;">✅ Подтвердить</button>
-                        </div>`;
-                    });
-                    html += '</div>';
-                }
-                
-                showAdminModal(html);
-                
-            } catch (e) {
-                alert(e.message);
-            }
-        }
-
-        function showAdminModal(content) {
-            const overlay = document.createElement('div');
-            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; display:flex; justify-content:center; align-items:center;';
-            overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
-            
-            const modal = document.createElement('div');
-            modal.style.cssText = 'background:var(--card-bg); padding:25px; border-radius:16px; max-width:500px; width:90%; color:var(--text-main); max-height:80vh; overflow-y:auto;';
-            modal.innerHTML = content + '<br><button class="csv-btn" onclick="this.closest(\'div\').closest(\'div\').remove()" style="margin-top:15px; width:100%; min-height:44px;">Закрыть</button>';
-            
-            overlay.appendChild(modal);
-            document.body.appendChild(overlay);
-        }
-
-        async function verifyUser(userId) {
-            if (!confirm('Подтвердить этого пользователя?')) return;
-            try {
-                await fetch(`${API}/admin/verify/${userId}`, { 
-                    method: 'POST', 
-                    headers: await getHeaders() 
-                });
-                openAdminPanel();
-                alert('Пользователь подтвержден!');
-            } catch (e) {
-                alert('Ошибка подтверждения: ' + e.message);
-            }
-        }
-
-        async function loadStats() {
-            try {
-                const res = await fetch(`${API}/statistics`, { headers: await getHeaders() });
-                if (!res.ok) return;
-                const stats = await res.json();
-                document.getElementById('stats').innerHTML = `
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.total}</div>
-                        <div class="stat-label">Всего задач</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: var(--success)">${stats.completed}</div>
-                        <div class="stat-label">Выполнено</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: var(--warning)">${stats.pending}</div>
-                        <div class="stat-label">В процессе</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: var(--danger)">${stats.overdue}</div>
-                        <div class="stat-label">Просрочено</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: #9c27b0">${stats.completion_rate}%</div>
-                        <div class="stat-label">Успешность</div>
-                    </div>
-                `;
-            } catch (e) { console.error('Stats error:', e); }
-        }
-
+        // Загрузка задач
         async function loadTodos() {
             try {
-                const res = await fetch(`${API}/todos`, { headers: await getHeaders() });
-                if (res.status === 401) logout();
-                allTodos = await res.json();
-                const list = document.getElementById('task-list');
+                const res = await fetch('/todos', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const todos = await res.json();
+                renderTodos(todos);
+            } catch (err) {
+                console.error('Error loading todos:', err);
+            }
+        }
+
+        // ✅ ОБНОВЛЕННАЯ ОТРИСОВКА ЗАДАЧ
+        function renderTodos(todos) {
+            const list = document.getElementById('todo-list');
+            list.innerHTML = '';
+
+            todos.forEach(todo => {
+                const card = document.createElement('div');
+                // Добавляем класс приоритета
+                card.className = `todo-card priority-${todo.priority} ${todo.completed ? 'completed' : ''}`;
                 
-                if (allTodos.length === 0) {
-                    list.innerHTML = '<div class="empty-state">📭 Нет задач. Добавь первую!</div>';
-                    return;
+                // Форматируем теги
+                let tagsHtml = '';
+                if (todo.tags) {
+                    const tags = todo.tags.split(',');
+                    tagsHtml = tags.map(tag => `<span class="tag-badge">${tag.trim()}</span>`).join('');
                 }
-                
-                const today = new Date().toISOString().split('T')[0];
-                list.innerHTML = allTodos.map(t => {
-                    const isOverdue = !t.completed && t.due_date && t.due_date < today;
-                    return `
-                        <li class="task-item ${t.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}">
-                            <div class="task-content">
-                                <div class="task-title">${t.title}</div>
-                                <div class="task-meta">
-                                    <span class="category-badge">${t.category}</span>
-                                    ${t.due_date ? `<span class="due-date">📅 ${formatDate(t.due_date)} ${isOverdue ? '(просрочено)' : ''}</span>` : ''}
-                                    ${t.description ? `<span>📝 ${t.description}</span>` : ''}
-                                </div>
-                            </div>
-                            <div class="task-actions">
-                                <button class="btn-done" onclick="toggleTodo(${t.id})">${t.completed ? '↩️' : '✅'}</button>
-                                <button class="btn-del" onclick="deleteTodo(${t.id})">🗑️</button>
-                            </div>
-                        </li>
-                    `;
-                }).join('');
-            } catch (e) { console.error(e); }
-        }
 
-        function formatDate(dateStr) {
-            if (!dateStr) return '';
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('ru-RU');
-        }
+                // Текст приоритета
+                const priorityText = todo.priority === 'high' ? '🔥 Высокий' : 
+                                    (todo.priority === 'medium' ? '⚠️ Средний' : '✅ Низкий');
 
-        function exportToCSV() {
-            if (allTodos.length === 0) return alert("Нет задач для экспорта!");
+                card.innerHTML = `
+                    <h3>${todo.title}</h3>
+                    <p>${todo.description || 'Нет описания'}</p>
+                    <div class="todo-meta">
+                        <span class="badge badge-${todo.priority}">${priorityText}</span>
+                        <span class="badge category-badge">${todo.category}</span>
+                        ${todo.due_date ? `<span class="badge" style="background: #9b59b6">📅 ${new Date(todo.due_date).toLocaleDateString('ru-RU')}</span>` : ''}
+                    </div>
+                    ${tagsHtml ? `<div style="margin-top: 10px">${tagsHtml}</div>` : ''}
+                    <div class="todo-actions">
+                        <button class="btn btn-success btn-small" onclick="toggleComplete(${todo.id})">
+                            ${todo.completed ? '↩️ Вернуть' : '✔️ Выполнить'}
+                        </button>
+                        <button class="btn btn-primary btn-small" onclick="editTodo(${todo.id})">✏️ Редактировать</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteTodo(${todo.id})">🗑️ Удалить</button>
+                    </div>
+                `;
 
-            let csvContent = "Название,Категория,Статус,Срок,Описание\n";
-            
-            allTodos.forEach(t => {
-                const status = t.completed ? "Выполнено" : "В процессе";
-                const desc = t.description ? t.description.replace(/,/g, " ") : "";
-                csvContent += `"${t.title}","${t.category}","${status}","${t.due_date || ''}","${desc}"\n`;
+                list.appendChild(card);
             });
-
-            const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", "todo_tasks.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
 
-        async function addTodo() {
-            const title = document.getElementById('task-title').value.trim();
-            if (!title) return alert('Введите название задачи!');
+        // Загрузка статистики
+        async function loadStatistics() {
+            try {
+                const res = await fetch('/statistics', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const stats = await res.json();
+                document.getElementById('stat-total').textContent = stats.total;
+                document.getElementById('stat-completed').textContent = stats.completed;
+                document.getElementById('stat-pending').textContent = stats.pending;
+                document.getElementById('stat-overdue').textContent = stats.overdue;
+                document.getElementById('stat-rate').textContent = stats.completion_rate + '%';
+            } catch (err) {
+                console.error('Error loading stats:', err);
+            }
+        }
+
+        // Открытие модального окна
+        function openModal() {
+            document.getElementById('task-modal').classList.add('active');
+            document.getElementById('modal-title').textContent = 'Новая задача';
+            document.getElementById('task-form').reset();
+            editingTodoId = null;
+        }
+
+        // Закрытие модального окна
+        function closeModal() {
+            document.getElementById('task-modal').classList.remove('active');
+        }
+
+        // ✅ ОБНОВЛЕННАЯ ОТПРАВКА ФОРМЫ
+        document.getElementById('task-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            await fetch(`${API}/todos`, {
-                method: 'POST',
-                headers: await getHeaders(),
-                body: JSON.stringify({
-                    title: title,
-                    description: document.getElementById('task-desc').value,
-                    category: document.getElementById('task-category').value || 'Общее',
-                    due_date: document.getElementById('task-date').value || null
-                })
+            const todoData = {
+                title: document.getElementById('task-title').value,
+                description: document.getElementById('task-description').value,
+                category: document.getElementById('task-category').value,
+                priority: document.getElementById('task-priority').value, // ✅ Добавили
+                tags: document.getElementById('task-tags').value,         // ✅ Добавили
+                due_date: document.getElementById('task-due-date').value
+            };
+
+            try {
+                if (editingTodoId) {
+                    await fetch(`/todos/${editingTodoId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(todoData)
+                    });
+                } else {
+                    await fetch('/todos', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(todoData)
+                    });
+                }
+                closeModal();
+                loadTodos();
+                loadStatistics();
+            } catch (err) {
+                alert('Ошибка сохранения задачи');
+            }
+        });
+
+        // Выполнение задачи
+        async function toggleComplete(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                await fetch(`/todos/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ completed: !todo.completed })
+                });
+                loadTodos();
+                loadStatistics();
+            }
+        }
+
+        // Редактирование задачи
+        async function editTodo(id) {
+            const res = await fetch('/todos', {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
+            const todos = await res.json();
+            const todo = todos.find(t => t.id === id);
             
-            document.getElementById('task-title').value = '';
-            document.getElementById('task-desc').value = '';
-            document.getElementById('task-date').value = '';
-            await refreshAll();
+            if (todo) {
+                document.getElementById('modal-title').textContent = 'Редактировать задачу';
+                document.getElementById('task-title').value = todo.title;
+                document.getElementById('task-description').value = todo.description || '';
+                document.getElementById('task-category').value = todo.category;
+                document.getElementById('task-priority').value = todo.priority; // ✅ Добавили
+                document.getElementById('task-tags').value = todo.tags || '';   // ✅ Добавили
+                document.getElementById('task-due-date').value = todo.due_date || '';
+                editingTodoId = id;
+                document.getElementById('task-modal').classList.add('active');
+            }
         }
 
-        async function toggleTodo(id) {
-            const task = allTodos.find(t => t.id === id);
-            if (!task) return;
-            
-            await fetch(`${API}/todos/${id}`, {
-                method: 'PUT',
-                headers: await getHeaders(),
-                body: JSON.stringify({ completed: !task.completed })
-            });
-            await refreshAll();
-        }
-
+        // Удаление задачи
         async function deleteTodo(id) {
-            await fetch(`${API}/todos/${id}`, {
-                method: 'DELETE',
-                headers: await getHeaders()
-            });
-            await refreshAll();
+            if (confirm('Удалить задачу?')) {
+                await fetch(`/todos/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                loadTodos();
+                loadStatistics();
+            }
         }
 
-        async function refreshAll() {
-            await loadStats();
-            await loadTodos();
-        }
+        // Закрытие модального окна по клику вне его
+        document.getElementById('task-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'task-modal') {
+                closeModal();
+            }
+        });
     </script>
 </body>
 </html>
