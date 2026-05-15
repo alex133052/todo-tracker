@@ -357,202 +357,226 @@
     </div>
 
     <script>
-        let token = localStorage.getItem('token');
-        let isRegistering = false;
-        let editingTodoId = null;
+    let token = localStorage.getItem('token');
+    let isRegistering = false;
+    let editingTodoId = null;
+    let todos = []; // ✅ Добавили глобальную переменную
 
-        // Проверка авторизации
-        if (token) {
-            showMainSection();
-        }
+    // Проверка авторизации
+    if (token) {
+        showMainSection();
+    }
 
-        // Переключение вход/регистрация
-        document.getElementById('toggle-auth').addEventListener('click', (e) => {
-            e.preventDefault();
-            isRegistering = !isRegistering;
-            document.getElementById('auth-title').textContent = isRegistering ? 'Регистрация' : 'Вход';
-            e.target.textContent = isRegistering ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться';
-        });
+    // Переключение вход/регистрация
+    document.getElementById('toggle-auth').addEventListener('click', (e) => {
+        e.preventDefault();
+        isRegistering = !isRegistering;
+        document.getElementById('auth-title').textContent = isRegistering ? 'Регистрация' : 'Вход';
+        e.target.textContent = isRegistering ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться';
+    });
 
-        // Обработка формы авторизации
-        document.getElementById('auth-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+    // Обработка формы авторизации
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
 
-            try {
-                if (isRegistering) {
-                    await fetch('/auth/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password })
-                    });
-                    alert('Регистрация успешна! Проверьте email для подтверждения.');
+        try {
+            if (isRegistering) {
+                await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                alert('Регистрация успешна! Проверьте email для подтверждения.');
+            } else {
+                const res = await fetch('/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    token = data.access_token;
+                    localStorage.setItem('token', token);
+                    showMainSection();
                 } else {
-                    const res = await fetch('/token', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password })
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        token = data.access_token;
-                        localStorage.setItem('token', token);
-                        showMainSection();
-                    } else {
-                        alert('Ошибка входа');
-                    }
+                    const error = await res.json();
+                    alert('Ошибка: ' + (error.detail || 'Неверный email или пароль'));
                 }
-            } catch (err) {
-                alert('Ошибка: ' + err.message);
             }
-        });
-
-        function showMainSection() {
-            document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('main-section').classList.remove('hidden');
-            document.getElementById('user-email').textContent = localStorage.getItem('email') || 'User';
-            loadTodos();
-            loadStatistics();
+        } catch (err) {
+            alert('Ошибка: ' + err.message);
         }
+    });
 
-        function logout() {
-            localStorage.removeItem('token');
-            token = null;
-            location.reload();
-        }
+    function showMainSection() {
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('main-section').classList.remove('hidden');
+        loadTodos();
+        loadStatistics();
+    }
 
-        // Загрузка задач
-        async function loadTodos() {
-            try {
-                const res = await fetch('/todos', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const todos = await res.json();
-                renderTodos(todos);
-            } catch (err) {
-                console.error('Error loading todos:', err);
-            }
-        }
+    function logout() {
+        localStorage.removeItem('token');
+        token = null;
+        location.reload();
+    }
 
-        // ✅ ОБНОВЛЕННАЯ ОТРИСОВКА ЗАДАЧ
-        function renderTodos(todos) {
-            const list = document.getElementById('todo-list');
-            list.innerHTML = '';
-
-            todos.forEach(todo => {
-                const card = document.createElement('div');
-                // Добавляем класс приоритета
-                card.className = `todo-card priority-${todo.priority} ${todo.completed ? 'completed' : ''}`;
-                
-                // Форматируем теги
-                let tagsHtml = '';
-                if (todo.tags) {
-                    const tags = todo.tags.split(',');
-                    tagsHtml = tags.map(tag => `<span class="tag-badge">${tag.trim()}</span>`).join('');
-                }
-
-                // Текст приоритета
-                const priorityText = todo.priority === 'high' ? '🔥 Высокий' : 
-                                    (todo.priority === 'medium' ? '⚠️ Средний' : '✅ Низкий');
-
-                card.innerHTML = `
-                    <h3>${todo.title}</h3>
-                    <p>${todo.description || 'Нет описания'}</p>
-                    <div class="todo-meta">
-                        <span class="badge badge-${todo.priority}">${priorityText}</span>
-                        <span class="badge category-badge">${todo.category}</span>
-                        ${todo.due_date ? `<span class="badge" style="background: #9b59b6">📅 ${new Date(todo.due_date).toLocaleDateString('ru-RU')}</span>` : ''}
-                    </div>
-                    ${tagsHtml ? `<div style="margin-top: 10px">${tagsHtml}</div>` : ''}
-                    <div class="todo-actions">
-                        <button class="btn btn-success btn-small" onclick="toggleComplete(${todo.id})">
-                            ${todo.completed ? '↩️ Вернуть' : '✔️ Выполнить'}
-                        </button>
-                        <button class="btn btn-primary btn-small" onclick="editTodo(${todo.id})">✏️ Редактировать</button>
-                        <button class="btn btn-danger btn-small" onclick="deleteTodo(${todo.id})">🗑️ Удалить</button>
-                    </div>
-                `;
-
-                list.appendChild(card);
+    // ✅ ИСПРАВЛЕННАЯ Загрузка задач
+    async function loadTodos() {
+        try {
+            const res = await fetch('/todos', {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
+            if (res.ok) {
+                todos = await res.json(); // ✅ Сохраняем в глобальную переменную
+                console.log('Загружено задач:', todos.length); // ✅ Лог для отладки
+                renderTodos(todos);
+            } else {
+                console.error('Ошибка загрузки задач:', res.status);
+            }
+        } catch (err) {
+            console.error('Error loading todos:', err);
+        }
+    }
+
+    // ✅ ИСПРАВЛЕННАЯ Отрисовка задач
+    function renderTodos(todos) {
+        const list = document.getElementById('todo-list');
+        list.innerHTML = '';
+
+        if (todos.length === 0) {
+            list.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">Нет задач. Создайте первую! 📝</p>';
+            return;
         }
 
-        // Загрузка статистики
-        async function loadStatistics() {
-            try {
-                const res = await fetch('/statistics', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+        todos.forEach(todo => {
+            const card = document.createElement('div');
+            card.className = `todo-card priority-${todo.priority} ${todo.completed ? 'completed' : ''}`;
+            
+            // Форматируем теги
+            let tagsHtml = '';
+            if (todo.tags && todo.tags.trim()) {
+                const tags = todo.tags.split(',');
+                tagsHtml = tags.map(tag => `<span class="tag-badge">${tag.trim()}</span>`).join('');
+            }
+
+            // Текст приоритета
+            const priorityText = todo.priority === 'high' ? '🔥 Высокий' : 
+                                (todo.priority === 'medium' ? '⚠️ Средний' : '✅ Низкий');
+
+            card.innerHTML = `
+                <h3>${todo.title}</h3>
+                <p>${todo.description || 'Нет описания'}</p>
+                <div class="todo-meta">
+                    <span class="badge badge-${todo.priority}">${priorityText}</span>
+                    <span class="badge category-badge">${todo.category}</span>
+                    ${todo.due_date ? `<span class="badge" style="background: #9b59b6">📅 ${new Date(todo.due_date).toLocaleDateString('ru-RU')}</span>` : ''}
+                </div>
+                ${tagsHtml ? `<div style="margin-top: 10px">${tagsHtml}</div>` : ''}
+                <div class="todo-actions">
+                    <button class="btn btn-success btn-small" onclick="toggleComplete(${todo.id})">
+                        ${todo.completed ? '↩️ Вернуть' : '✔️ Выполнить'}
+                    </button>
+                    <button class="btn btn-primary btn-small" onclick="editTodo(${todo.id})">✏️ Редактировать</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteTodo(${todo.id})">🗑️ Удалить</button>
+                </div>
+            `;
+
+            list.appendChild(card);
+        });
+    }
+
+    // Загрузка статистики
+    async function loadStatistics() {
+        try {
+            const res = await fetch('/statistics', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
                 const stats = await res.json();
                 document.getElementById('stat-total').textContent = stats.total;
                 document.getElementById('stat-completed').textContent = stats.completed;
                 document.getElementById('stat-pending').textContent = stats.pending;
                 document.getElementById('stat-overdue').textContent = stats.overdue;
                 document.getElementById('stat-rate').textContent = stats.completion_rate + '%';
-            } catch (err) {
-                console.error('Error loading stats:', err);
             }
+        } catch (err) {
+            console.error('Error loading stats:', err);
         }
+    }
 
-        // Открытие модального окна
-        function openModal() {
-            document.getElementById('task-modal').classList.add('active');
-            document.getElementById('modal-title').textContent = 'Новая задача';
-            document.getElementById('task-form').reset();
-            editingTodoId = null;
-        }
+    // Открытие модального окна
+    function openModal() {
+        document.getElementById('task-modal').classList.add('active');
+        document.getElementById('modal-title').textContent = 'Новая задача';
+        document.getElementById('task-form').reset();
+        // Устанавливаем средний приоритет по умолчанию
+        document.getElementById('task-priority').value = 'medium';
+        editingTodoId = null;
+    }
 
-        // Закрытие модального окна
-        function closeModal() {
-            document.getElementById('task-modal').classList.remove('active');
-        }
+    // Закрытие модального окна
+    function closeModal() {
+        document.getElementById('task-modal').classList.remove('active');
+    }
 
-        // ✅ ОБНОВЛЕННАЯ ОТПРАВКА ФОРМЫ
-        document.getElementById('task-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const todoData = {
-                title: document.getElementById('task-title').value,
-                description: document.getElementById('task-description').value,
-                category: document.getElementById('task-category').value,
-                priority: document.getElementById('task-priority').value, // ✅ Добавили
-                tags: document.getElementById('task-tags').value,         // ✅ Добавили
-                due_date: document.getElementById('task-due-date').value
-            };
+    // Отправка формы
+    document.getElementById('task-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const todoData = {
+            title: document.getElementById('task-title').value,
+            description: document.getElementById('task-description').value,
+            category: document.getElementById('task-category').value,
+            priority: document.getElementById('task-priority').value,
+            tags: document.getElementById('task-tags').value,
+            due_date: document.getElementById('task-due-date').value
+        };
 
-            try {
-                if (editingTodoId) {
-                    await fetch(`/todos/${editingTodoId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(todoData)
-                    });
-                } else {
-                    await fetch('/todos', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(todoData)
-                    });
+        console.log('Отправка задачи:', todoData); // ✅ Лог
+
+        try {
+            if (editingTodoId) {
+                const res = await fetch(`/todos/${editingTodoId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(todoData)
+                });
+                if (res.ok) {
+                    console.log('Задача обновлена');
                 }
-                closeModal();
-                loadTodos();
-                loadStatistics();
-            } catch (err) {
-                alert('Ошибка сохранения задачи');
+            } else {
+                const res = await fetch('/todos', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(todoData)
+                });
+                if (res.ok) {
+                    console.log('Задача создана');
+                }
             }
-        });
+            closeModal();
+            loadTodos();
+            loadStatistics();
+        } catch (err) {
+            console.error('Ошибка сохранения:', err);
+            alert('Ошибка сохранения задачи');
+        }
+    });
 
-        // Выполнение задачи
-        async function toggleComplete(id) {
-            const todo = todos.find(t => t.id === id);
-            if (todo) {
+    // ✅ ИСПРАВЛЕННАЯ Выполнение задачи
+    async function toggleComplete(id) {
+        const todo = todos.find(t => t.id === id); // ✅ Теперь работает
+        if (todo) {
+            try {
                 await fetch(`/todos/${id}`, {
                     method: 'PUT',
                     headers: {
@@ -563,48 +587,51 @@
                 });
                 loadTodos();
                 loadStatistics();
+            } catch (err) {
+                console.error('Ошибка обновления:', err);
             }
         }
+    }
 
-        // Редактирование задачи
-        async function editTodo(id) {
-            const res = await fetch('/todos', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const todos = await res.json();
-            const todo = todos.find(t => t.id === id);
-            
-            if (todo) {
-                document.getElementById('modal-title').textContent = 'Редактировать задачу';
-                document.getElementById('task-title').value = todo.title;
-                document.getElementById('task-description').value = todo.description || '';
-                document.getElementById('task-category').value = todo.category;
-                document.getElementById('task-priority').value = todo.priority; // ✅ Добавили
-                document.getElementById('task-tags').value = todo.tags || '';   // ✅ Добавили
-                document.getElementById('task-due-date').value = todo.due_date || '';
-                editingTodoId = id;
-                document.getElementById('task-modal').classList.add('active');
-            }
+    // ✅ ИСПРАВЛЕННОЕ Редактирование задачи
+    async function editTodo(id) {
+        const todo = todos.find(t => t.id === id); // ✅ Теперь работает
+        
+        if (todo) {
+            document.getElementById('modal-title').textContent = 'Редактировать задачу';
+            document.getElementById('task-title').value = todo.title;
+            document.getElementById('task-description').value = todo.description || '';
+            document.getElementById('task-category').value = todo.category;
+            document.getElementById('task-priority').value = todo.priority;
+            document.getElementById('task-tags').value = todo.tags || '';
+            document.getElementById('task-due-date').value = todo.due_date || '';
+            editingTodoId = id;
+            document.getElementById('task-modal').classList.add('active');
         }
+    }
 
-        // Удаление задачи
-        async function deleteTodo(id) {
-            if (confirm('Удалить задачу?')) {
+    // Удаление задачи
+    async function deleteTodo(id) {
+        if (confirm('Удалить задачу?')) {
+            try {
                 await fetch(`/todos/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 loadTodos();
                 loadStatistics();
+            } catch (err) {
+                console.error('Ошибка удаления:', err);
             }
         }
+    }
 
-        // Закрытие модального окна по клику вне его
-        document.getElementById('task-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'task-modal') {
-                closeModal();
-            }
-        });
-    </script>
+    // Закрытие модального окна по клику вне его
+    document.getElementById('task-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'task-modal') {
+            closeModal();
+        }
+    });
+</script>
 </body>
 </html>
