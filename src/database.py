@@ -24,7 +24,6 @@ class TodoDatabase:
     def init_db(self):
         conn = self._get_connection()
         with conn.cursor() as cur:
-            # Создаём таблицу пользователей
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
@@ -36,7 +35,6 @@ class TodoDatabase:
                 )
             """)
             
-            # Добавляем колонки, если их нет
             cur.execute("""
                 SELECT column_name 
                 FROM information_schema.columns 
@@ -53,7 +51,6 @@ class TodoDatabase:
             if not cur.fetchone():
                 cur.execute("ALTER TABLE users ADD COLUMN verification_token TEXT")
             
-            # Создаём таблицу задач
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS todos (
                     id SERIAL PRIMARY KEY,
@@ -67,7 +64,6 @@ class TodoDatabase:
                 )
             """)
             
-            # Добавляем user_id, если нет
             cur.execute("""
                 SELECT column_name 
                 FROM information_schema.columns 
@@ -80,7 +76,7 @@ class TodoDatabase:
 
     def create_user(self, email: str, password: str) -> dict:
         conn = self._get_connection()
-        # Обрезаем пароль до 72 символов (ограничение bcrypt)
+        # Принудительно обрезаем пароль ДО хеширования
         if len(password) > 72:
             password = password[:72]
         hashed_pw = pwd_context.hash(password)
@@ -183,28 +179,22 @@ class TodoDatabase:
             return cur.rowcount > 0
 
     def get_statistics(self, user_id: int) -> dict:
-        """Получить статистику задач пользователя"""
         conn = self._get_connection()
         with conn.cursor() as cur:
-            # Всего задач
             cur.execute("SELECT COUNT(*) FROM todos WHERE user_id = %s", (user_id,))
             total = cur.fetchone()['count']
             
-            # Выполнено
             cur.execute("SELECT COUNT(*) FROM todos WHERE user_id = %s AND completed = TRUE", (user_id,))
             completed = cur.fetchone()['count']
             
-            # В процессе (не выполнено)
             pending = total - completed
             
-            # Просрочено
             cur.execute("""
                 SELECT COUNT(*) FROM todos 
                 WHERE user_id = %s AND completed = FALSE AND due_date < CURRENT_DATE
             """, (user_id,))
             overdue = cur.fetchone()['count']
             
-            # Процент выполнения
             completion_rate = round((completed / total * 100) if total > 0 else 0)
             
             return {
@@ -216,14 +206,10 @@ class TodoDatabase:
             }
 
     def get_overdue_report(self):
-        """
-        Возвращает словарь: { 'email_пользователя': [список просроченных задач] }
-        """
         conn = self._get_connection()
         report = {}
         
         with conn.cursor() as cur:
-            # 1. Берем все просроченные НЕ выполненные задачи
             cur.execute("""
                 SELECT u.email, t.title, t.due_date 
                 FROM todos t
@@ -233,7 +219,6 @@ class TodoDatabase:
             """)
             rows = cur.fetchall()
             
-            # 2. Группируем их по email
             for row in rows:
                 email = row['email']
                 if email not in report:
@@ -246,14 +231,12 @@ class TodoDatabase:
         return report
 
     def get_pending_users(self):
-        """Возвращает список пользователей, ожидающих подтверждения"""
         conn = self._get_connection()
         with conn.cursor() as cur:
             cur.execute("SELECT id, email, created_at FROM users WHERE is_verified = FALSE")
             return [dict(row) for row in cur.fetchall()]
 
     def verify_user_by_id(self, user_id: int):
-        """Подтверждает пользователя по ID"""
         conn = self._get_connection()
         with conn.cursor() as cur:
             cur.execute("UPDATE users SET is_verified = TRUE WHERE id = %s", (user_id,))
