@@ -4,7 +4,7 @@ from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from passlib.context import CryptContext
 
-# ✅ ИСПРАВЛЕНО: Используем pbkdf2_sha256 (нет ограничения 72 байта)
+# Используем pbkdf2_sha256 (нет ограничения 72 байта)
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 class TodoDatabase:
@@ -77,7 +77,7 @@ class TodoDatabase:
 
     def create_user(self, email: str, password: str) -> dict:
         conn = self._get_connection()
-        # ✅ ИСПРАВЛЕНО: Обрезаем пароль до 100 символов
+        # Обрезаем пароль до 100 символов
         if len(password) > 100:
             password = password[:100]
         hashed_pw = pwd_context.hash(password)
@@ -86,8 +86,9 @@ class TodoDatabase:
         
         with conn.cursor() as cur:
             try:
+                # ✅ ИСПРАВЛЕНО: Возвращаем verification_token
                 cur.execute(
-                    "INSERT INTO users (email, hashed_password, verification_token, is_verified) VALUES (%s, %s, %s, FALSE) RETURNING id, email",
+                    "INSERT INTO users (email, hashed_password, verification_token, is_verified) VALUES (%s, %s, %s, FALSE) RETURNING id, email, verification_token",
                     (email, hashed_pw, token)
                 )
                 conn.commit()
