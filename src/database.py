@@ -76,9 +76,9 @@ class TodoDatabase:
 
     def create_user(self, email: str, password: str) -> dict:
         conn = self._get_connection()
-        # Принудительно обрезаем пароль ДО хеширования
-        if len(password) > 72:
-            password = password[:72]
+        # ⚠️ ИСПРАВЛЕНИЕ: Обрезаем пароль до 18 символов (72 байта max для UTF-8)
+        if len(password) > 18:
+            password = password[:18]
         hashed_pw = pwd_context.hash(password)
         import secrets
         token = secrets.token_urlsafe(32)

@@ -88,18 +88,18 @@ class Token(BaseModel):
     token_type: str
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    # ⚠️ ИСПРАВЛЕНИЕ: Обрезаем пароль ДО проверки (bcrypt ограничение 72 байта)
-    if len(plain_password) > 50:
-        plain_password = plain_password[:50]
+    # ⚠️ ИСПРАВЛЕНИЕ: Обрезаем пароль ДО проверки (18 символов = 72 байта max для UTF-8)
+    if len(plain_password) > 18:
+        plain_password = plain_password[:18]
     return pwd_context.verify(plain_password, hashed_password)
 
 def authenticate_user(email: str, password: str):
     user = db.get_user_by_email(email)
     if not user:
         return False
-    # Обрезаем пароль при входе
-    if len(password) > 72:
-        password = password[:72]
+    # ⚠️ ИСПРАВЛЕНИЕ: Обрезаем пароль при входе (18 символов = 72 байта max)
+    if len(password) > 18:
+        password = password[:18]
     if not verify_password(password, user['hashed_password']):
         return False
     return user
@@ -160,8 +160,8 @@ def verify_user(user_id: int, admin_email: str = Depends(get_current_admin)):
 
 @app.post("/auth/register", response_model=UserResponse)
 def register(user: UserCreate):
-    # Принудительно обрезаем пароль ПЕРЕД хешированием
-    password = user.password[:50] if len(user.password) > 50 else user.password
+    # ⚠️ ИСПРАВЛЕНИЕ: Обрезаем пароль до 18 символов (72 байта max)
+    password = user.password[:18] if len(user.password) > 18 else user.password
     
     new_user = db.create_user(user.email, password)
     
