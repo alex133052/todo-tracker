@@ -73,6 +73,8 @@ class TodoUpdate(BaseModel):
     due_date: Optional[str] = None
     completed: Optional[bool] = None
 
+from datetime import datetime, date  # ✅ Добавь date в импорт
+
 class TodoResponse(BaseModel):
     id: int
     title: str
@@ -80,8 +82,7 @@ class TodoResponse(BaseModel):
     category: str
     priority: str
     tags: str
-    due_date: Optional[str]
-    completed: bool
+    due_date: Optional[date]  # ✅ Теперь принимает date объект
     created_at: datetime
 
 class Token(BaseModel):
