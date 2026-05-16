@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Todo Tracker Pro</title>
-    <!-- ✅ Chart.js -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -76,7 +76,7 @@
         .stat-card h3 { font-size: 2rem; margin-bottom: 5px; color: var(--text-primary); }
         .stat-card p { color: var(--text-secondary); }
 
-        /* 📊 ГРАФИКИ */
+        /* Графики */
         .charts-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -306,7 +306,7 @@
         <div id="main-section" class="hidden">
             <header>
                 <div class="header-left">
-                    <h1>📋 Todo Tracker Pro</h1>
+                    <h1> Todo Tracker Pro</h1>
                     <span id="user-email" style="font-weight: bold;"></span>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -324,7 +324,7 @@
                 <div class="stat-card"><h3 id="stat-rate">0%</h3><p>Успешность</p></div>
             </div>
 
-            <!-- 📊 КОНТЕЙНЕР ГРАФИКОВ -->
+            <!-- КОНТЕЙНЕР ГРАФИКОВ -->
             <div class="charts-container">
                 <div class="chart-card">
                     <h3>📊 Статус задач</h3>
@@ -343,7 +343,8 @@
             <div class="main-content">
                 <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
                     <button class="btn btn-primary" onclick="openModal()" style="flex: 1; min-width: 150px;">+ Новая задача</button>
-                    <button class="btn btn-success" onclick="exportToCSV()" style="flex: 1; min-width: 150px;">📥 Скачать CSV</button>
+                    <!-- Кнопка Экспорта в Excel -->
+                    <button class="btn btn-success" onclick="exportToExcel()" style="flex: 1; min-width: 150px;">📥 Скачать Excel</button>
                 </div>
 
                 <div class="filters-bar">
@@ -351,7 +352,7 @@
                     <select id="filter-priority" class="form-select" style="margin: 0;">
                         <option value="all">Все приоритеты</option>
                         <option value="high">🔥 Высокий</option>
-                        <option value="medium">⚠️ Средний</option>
+                        <option value="medium">️ Средний</option>
                         <option value="low">✅ Низкий</option>
                     </select>
                     <select id="filter-category" class="form-select" style="margin: 0;">
@@ -481,7 +482,7 @@
             document.body.classList.toggle('dark-theme');
             const isDark = document.body.classList.contains('dark-theme');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            document.getElementById('theme-btn').textContent = isDark ? '☀️' : '🌙';
+            document.getElementById('theme-btn').textContent = isDark ? '️' : '🌙';
             updateChartsTheme();
         }
 
@@ -505,25 +506,18 @@
                     document.getElementById('stat-pending').textContent = s.pending;
                     document.getElementById('stat-overdue').textContent = s.overdue;
                     document.getElementById('stat-rate').textContent = s.completion_rate + '%';
-                    
-                    // ✅ Обновляем графики
                     updateCharts(s);
                 }
             } catch (err) {}
         }
 
-        // ✅ СОЗДАНИЕ И ОБНОВЛЕНИЕ ГРАФИКОВ
         function updateCharts(stats) {
             const isDark = document.body.classList.contains('dark-theme');
             const textColor = isDark ? '#e2e8f0' : '#2c3e50';
             const gridColor = isDark ? '#4a5568' : '#ddd';
 
-            // 📊 Круговая диаграмма (Статус задач)
             const statusCtx = document.getElementById('statusChart').getContext('2d');
-            
-            if (statusChart) {
-                statusChart.destroy();
-            }
+            if (statusChart) statusChart.destroy();
 
             statusChart = new Chart(statusCtx, {
                 type: 'doughnut',
@@ -547,15 +541,10 @@
                 }
             });
 
-            // 📈 Прогресс (выполнение)
             const progressCtx = document.getElementById('progressChart').getContext('2d');
-            
-            if (progressChart) {
-                progressChart.destroy();
-            }
+            if (progressChart) progressChart.destroy();
 
             const pending = stats.total - stats.completed;
-
             progressChart = new Chart(progressCtx, {
                 type: 'bar',
                 data: {
@@ -570,27 +559,22 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
                         y: {
                             beginAtZero: true,
                             ticks: { color: textColor },
                             grid: { color: gridColor }
                         },
-                        x: {
-                            ticks: { color: textColor },
-                            grid: { display: false }
-                        }
+                        x: { ticks: { color: textColor }, grid: { display: false } }
                     }
                 }
             });
         }
 
         function updateChartsTheme() {
-            if (todos.length > 0) {
-                loadStatistics(); // Перерисовать с новыми цветами
+            if (todos.length > 0 || document.getElementById('stat-total').textContent !== '0') {
+                loadStatistics();
             }
         }
 
@@ -708,16 +692,29 @@
                 loadTodos(); loadStatistics();
             }
         }
-        async function exportToCSV() {
+        
+        // ✅ ФУНКЦИЯ ЭКСПОРТА В EXCEL
+        async function exportToExcel() {
             try {
-                const res = await fetch('/todos/export/csv', { headers: { 'Authorization': `Bearer ${token}` } });
+                const res = await fetch('/todos/export/excel', { 
+                    headers: { 'Authorization': `Bearer ${token}` } 
+                });
                 if (res.ok) {
                     const blob = await res.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.href = url; a.download = 'tasks.csv'; document.body.appendChild(a); a.click();
+                    a.href = url; 
+                    a.download = 'tasks.xlsx'; 
+                    document.body.appendChild(a); 
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert('Ошибка экспорта');
                 }
-            } catch (err) { alert('Ошибка экспорта'); }
+            } catch (err) { 
+                console.error(err);
+                alert('Ошибка сети');
+            }
         }
 
         // ✅ АДМИНКА

@@ -1,23 +1,31 @@
-import csv
-import io
-from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 import jwt
 from passlib.context import CryptContext
 import os
+import io
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.utils import get_column_letter
+
 from src.database import TodoDatabase
 from src.email_service import send_verification_email, send_overdue_reminder
 from apscheduler.schedulers.background import BackgroundScheduler
 
 app = FastAPI(title="Todo Tracker Pro")
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
@@ -50,6 +58,8 @@ def startup():
 def shutdown():
     scheduler.shutdown()
 
+# --- МОДЕЛИ ---
+
 class UserCreate(BaseModel):
     email: str
     password: str
@@ -58,13 +68,12 @@ class UserResponse(BaseModel):
     email: str
     is_verified: bool = False
 
-# ✅ ОБНОВЛЕННАЯ МОДЕЛЬ ЗАДАЧИ (добавили priority и tags)
 class TodoCreate(BaseModel):
     title: str
     description: Optional[str] = None
     category: Optional[str] = "Общее"
-    priority: Optional[str] = "medium" # high, medium, low
-    tags: Optional[str] = ""           # comma separated
+    priority: Optional[str] = "medium"
+    tags: Optional[str] = ""
     due_date: Optional[str] = None
 
 class TodoUpdate(BaseModel):
@@ -76,8 +85,6 @@ class TodoUpdate(BaseModel):
     due_date: Optional[str] = None
     completed: Optional[bool] = None
 
-from datetime import datetime, date  # ✅ Добавь date в импорт
-
 class TodoResponse(BaseModel):
     id: int
     title: str
@@ -85,12 +92,15 @@ class TodoResponse(BaseModel):
     category: str
     priority: str
     tags: str
-    due_date: Optional[date]  # ✅ Теперь принимает date объект
+    due_date: Optional[date]
+    completed: bool
     created_at: datetime
 
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+# --- ФУНКЦИИ ПОМОЩНИКИ ---
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     if len(plain_password) > 100: plain_password = plain_password[:100]
@@ -132,6 +142,8 @@ def get_current_admin(token: str = Depends(oauth2_scheme)):
     if email != ADMIN_EMAIL: raise HTTPException(status_code=403, detail="Доступ запрещен. Только для администратора.")
     return email
 
+# --- ЭНДПОИНТЫ ---
+
 @app.get("/admin/pending-users")
 def get_pending_users(admin_email: str = Depends(get_current_admin)):
     return db.get_pending_users()
@@ -169,7 +181,6 @@ def verify_email(token: str):
 def get_todos(current_user: dict = Depends(get_current_user)):
     return db.get_all_todos(current_user['id'])
 
-# ✅ ОБНОВЛЕННЫЙ СОЗДАНИЕ ЗАДАЧИ
 @app.post("/todos", response_model=TodoResponse)
 def create_todo(todo: TodoCreate, current_user: dict = Depends(get_current_user)):
     return db.create_todo(
@@ -197,69 +208,73 @@ def delete_todo(todo_id: int, current_user: dict = Depends(get_current_user)):
 def get_statistics(current_user: dict = Depends(get_current_user)):
     return db.get_statistics(current_user['id'])
 
-@app.get("/todos/export/csv")
-def export_todos_csv(current_user: dict = Depends(get_current_user)):
+# --- ЭКСПОРТ В EXCEL (XLSX) ---
+
+@app.get("/todos/export/excel")
+def export_todos_excel(current_user: dict = Depends(get_current_user)):
     todos = db.get_all_todos(current_user['id'])
     
-    output = io.StringIO()
-    # ✅ Добавляем UTF-8 BOM для корректного отображения кириллицы
-    output.write('\ufeff')  # Это BOM (Byte Order Mark)
-    
-    writer = csv.writer(output, delimiter=';')
-    
-    writer.writerow(["ID", "Задача", "Описание", "Категория", "Приоритет", "Теги", "Срок", "Статус"])
-    
-    for todo in todos:
-        status = "Выполнено" if todo['completed'] else "В процессе"
-        writer.writerow([
-            todo['id'],
-            todo['title'],
-            todo['description'] or "",
-            todo['category'],
-            todo['priority'],
-            todo['tags'] or "",
-            todo['due_date'],
-            status
-        ])
-    
-    output.seek(0)
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv; charset=utf-8",  # ✅ Указываем кодировку
-        headers={"Content-Disposition": "attachment; filename=todos.csv"}
-    )
-    # Получаем задачи
-    todos = db.get_all_todos(current_user['id'])
-    
-    # Создаем CSV файл в памяти
-    output = io.StringIO()
-    writer = csv.writer(output, delimiter=';') # Используем ; для Excel
+    # Создаем новую книгу Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Мои Задачи"
     
     # Заголовки
-    writer.writerow(["ID", "Задача", "Описание", "Категория", "Приоритет", "Теги", "Срок", "Статус"])
+    headers = ["ID", "Задача", "Описание", "Категория", "Приоритет", "Теги", "Срок", "Статус"]
+    ws.append(headers)
     
-    # Данные
+    # Стили для заголовков
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4A5568", end_color="4A5568", fill_type="solid")
+    header_alignment = Alignment(horizontal="center")
+    
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+    
+    # Заполняем данными
     for todo in todos:
-        status = "Выполнено" if todo['completed'] else "В процессе"
-        writer.writerow([
+        status_text = "Выполнено" if todo['completed'] else "В процессе"
+        ws.append([
             todo['id'],
             todo['title'],
             todo['description'] or "",
-            todo['category'],
-            todo['priority'],
+            todo['category'] or "",
+            todo['priority'] or "",
             todo['tags'] or "",
             todo['due_date'],
-            status
+            status_text
         ])
-    
-    # Отдаем файл
-    output.seek(0)
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=todos.csv"}
-    )
+        
+        # Выравнивание по центру для текста
+        for cell in ws[ws.max_row]:
+            cell.alignment = Alignment(wrap_text=True, vertical="top")
 
+    # Автоширина столбцов
+    for idx, col in enumerate(ws.columns, 1):
+        max_length = 0
+        column_letter = get_column_letter(idx)
+        for cell in col:
+            try:
+                length = len(str(cell.value)) if cell.value else 0
+                if length > max_length:
+                    max_length = length
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column_letter].width = min(adjusted_width, 50)
+
+    # Сохраняем файл в память
+    file_stream = io.BytesIO()
+    wb.save(file_stream)
+    file_stream.seek(0)
+    
+    return StreamingResponse(
+        iter([file_stream.read()]),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=tasks.xlsx"}
+    )
 
 @app.get("/")
 async def root_page():
