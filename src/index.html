@@ -44,6 +44,21 @@
         .completed { opacity: 0.6; text-decoration: line-through; }
         .auth-form { max-width: 400px; margin: 50px auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .hidden { display: none !important; }
+        /* Стили для панели фильтров */
+.filters-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    background: #f1f5f9;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+    .filters-bar {
+        flex-direction: column;
+    }
+}
         @media (max-width: 768px) { .stats { grid-template-columns: repeat(2, 1fr); } }
     </style>
 </head>
@@ -90,6 +105,26 @@
                 <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                     <button class="btn btn-primary" onclick="openModal()">+ Новая задача</button>
                     <button class="btn btn-success" onclick="exportToCSV()"> Скачать CSV</button>
+                    <!-- ✅ ПАНЕЛЬ ПОИСКА И ФИЛЬТРОВ -->
+<div class="filters-bar">
+    <input type="text" id="search-input" class="form-input" placeholder=" Поиск по названию..." style="margin: 0; flex: 2;">
+    
+    <select id="filter-priority" class="form-select" style="margin: 0; flex: 1;">
+        <option value="all">Все приоритеты</option>
+        <option value="high">🔥 Высокий</option>
+        <option value="medium">⚠️ Средний</option>
+        <option value="low">✅ Низкий</option>
+    </select>
+
+    <select id="filter-category" class="form-select" style="margin: 0; flex: 1;">
+        <option value="all">Все категории</option>
+        <option value="Работа">Работа</option>
+        <option value="Личное">Личное</option>
+        <option value="Покупки">Покупки</option>
+        <option value="Здоровье">Здоровье</option>
+        <option value="Общее">Общее</option>
+    </select>
+</div>
                 </div>
                 <div id="todo-list" class="todo-list"></div>
             </div>
@@ -324,6 +359,36 @@
                     a.href = url; a.download = 'tasks.csv'; document.body.appendChild(a); a.click();
                 }
             } catch (err) { alert('Ошибка экспорта'); }
+            // ✅ ЛОГИКА ПОИСКА И ФИЛЬТРАЦИИ
+
+function applyFilters() {
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
+    const priorityFilter = document.getElementById('filter-priority').value;
+    const categoryFilter = document.getElementById('filter-category').value;
+
+    // Фильтруем массив todos
+    const filteredTodos = todos.filter(todo => {
+        // 1. Поиск по названию
+        const matchesSearch = todo.title.toLowerCase().includes(searchTerm) || 
+                              (todo.description && todo.description.toLowerCase().includes(searchTerm));
+        
+        // 2. Фильтр по приоритету
+        const matchesPriority = (priorityFilter === 'all') || (todo.priority === priorityFilter);
+        
+        // 3. Фильтр по категории
+        const matchesCategory = (categoryFilter === 'all') || (todo.category === categoryFilter);
+
+        return matchesSearch && matchesPriority && matchesCategory;
+    });
+
+    // Отрисовываем только отфильтрованные задачи
+    renderTodos(filteredTodos);
+}
+
+// Вешаем обработчики событий на поля ввода
+document.getElementById('search-input').addEventListener('input', applyFilters);
+document.getElementById('filter-priority').addEventListener('change', applyFilters);
+document.getElementById('filter-category').addEventListener('change', applyFilters);
         }
 
         // Закрытие по клику вне окна
