@@ -199,6 +199,35 @@ def get_statistics(current_user: dict = Depends(get_current_user)):
 
 @app.get("/todos/export/csv")
 def export_todos_csv(current_user: dict = Depends(get_current_user)):
+    todos = db.get_all_todos(current_user['id'])
+    
+    output = io.StringIO()
+    # ✅ Добавляем UTF-8 BOM для корректного отображения кириллицы
+    output.write('\ufeff')  # Это BOM (Byte Order Mark)
+    
+    writer = csv.writer(output, delimiter=';')
+    
+    writer.writerow(["ID", "Задача", "Описание", "Категория", "Приоритет", "Теги", "Срок", "Статус"])
+    
+    for todo in todos:
+        status = "Выполнено" if todo['completed'] else "В процессе"
+        writer.writerow([
+            todo['id'],
+            todo['title'],
+            todo['description'] or "",
+            todo['category'],
+            todo['priority'],
+            todo['tags'] or "",
+            todo['due_date'],
+            status
+        ])
+    
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",  # ✅ Указываем кодировку
+        headers={"Content-Disposition": "attachment; filename=todos.csv"}
+    )
     # Получаем задачи
     todos = db.get_all_todos(current_user['id'])
     
